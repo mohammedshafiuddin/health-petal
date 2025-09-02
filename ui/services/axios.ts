@@ -1,0 +1,57 @@
+import axiosParent from 'axios';
+// import { getJWT } from '../hooks/useJWT';
+import { getJWT } from '@/hooks/useJWT';
+import { DeviceEventEmitter } from 'react-native'
+import { FORCE_LOGOUT_EVENT } from '../lib/const-strs';
+
+// const API_BASE_URL = 'http://192.168.100.86:4000/api/mobile/'; // Change to your API base URL
+// const API_BASE_URL = 'http://192.168.100.89:4000/api/mobile/'; // Change to your API base URL
+// const API_BASE_URL = 'http://10.59.191.237:4000/api/mobile/'; // Change to your API base URL
+// const API_BASE_URL = 'http://localhost:4000/api/mobile/'; // Change to your API base URL
+const API_BASE_URL = 'https://car-safar.com/api/mobile/'; // Change to your API base URL
+
+const axios = axiosParent.create({
+  baseURL: API_BASE_URL,
+  timeout: 60000,
+  // headers: {
+  //   'Content-Type': 'application/json',
+  // },
+});
+
+
+axios.interceptors.request.use(
+  async (config) => {
+    const token = await getJWT();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    
+    const status = error?.status;
+    
+    if (status === 401) {
+      // Handle unauthorized access
+      DeviceEventEmitter.emit(FORCE_LOGOUT_EVENT);
+      
+    }
+    const message = error?.response?.data?.message;
+    if (message) {
+      // Optionally, you can attach the message to the error object or throw a new error
+      const err = new Error(message);
+      // Optionally attach the original error for debugging
+      (err as any).original = error;
+      return Promise.reject(err);
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default axios;
