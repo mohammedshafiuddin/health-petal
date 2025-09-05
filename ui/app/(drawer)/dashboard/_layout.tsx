@@ -1,14 +1,22 @@
 import { Stack } from 'expo-router'
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useAuth } from '@/components/context/auth-context'
 
-interface Props {}
-
-function _layout(props: Props) {
-    const {} = props
+function DashboardLayout() {
+    const { isLoggedIn, refreshResponsibilities, responsibilities } = useAuth();
+    console.log({responsibilities})
+    
+    
+    // Refresh responsibilities when dashboard is loaded
+    useEffect(() => {
+        if (isLoggedIn) {
+            refreshResponsibilities();
+        }
+    }, [isLoggedIn]);
 
     return (
         <Stack screenOptions={{ headerShown: false }} />
     )
 }
 
-export default _layout
+export default DashboardLayout

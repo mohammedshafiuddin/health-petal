@@ -51,7 +51,8 @@ CREATE TABLE "hospital" (
 CREATE TABLE "role_info" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "role_info_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"name" varchar(255) NOT NULL,
-	"description" varchar(500)
+	"description" varchar(500),
+	"displayName" varchar(255)
 );
 --> statement-breakpoint
 CREATE TABLE "running_counter" (
@@ -81,6 +82,13 @@ CREATE TABLE "token_info" (
 	CONSTRAINT "unique_doctor_date_queue" UNIQUE("doctor_id","token_date","queue_num")
 );
 --> statement-breakpoint
+CREATE TABLE "user_info" (
+	"user_id" integer PRIMARY KEY NOT NULL,
+	"password" varchar(255) NOT NULL,
+	"is_suspended" boolean DEFAULT false NOT NULL,
+	"active_token_version" integer DEFAULT 1 NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "user_roles" (
 	"user_id" integer NOT NULL,
 	"role_id" integer NOT NULL,
@@ -88,32 +96,34 @@ CREATE TABLE "user_roles" (
 	CONSTRAINT "user_role_pk" UNIQUE("user_id","role_id")
 );
 --> statement-breakpoint
-CREATE TABLE "profiles" (
-	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "profiles_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
+CREATE TABLE "users" (
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "users_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"name" varchar(255) NOT NULL,
+	"username" varchar(255),
 	"email" varchar(255),
 	"mobile" varchar(255) NOT NULL,
 	"join_date" date DEFAULT 'now()' NOT NULL,
 	"address" varchar(500),
 	"profile_pic_url" varchar(255),
-	CONSTRAINT "profiles_email_unique" UNIQUE("email"),
-	CONSTRAINT "profiles_mobile_unique" UNIQUE("mobile"),
+	CONSTRAINT "users_mobile_unique" UNIQUE("mobile"),
 	CONSTRAINT "unique_mobile" UNIQUE("mobile"),
-	CONSTRAINT "unique_email" UNIQUE("email")
+	CONSTRAINT "unique_email" UNIQUE("email"),
+	CONSTRAINT "unique_username" UNIQUE("username")
 );
 --> statement-breakpoint
 ALTER TABLE "doctor_availability" ADD CONSTRAINT "doctor_availability_doctor_id_doctor_info_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."doctor_info"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "doctor_info" ADD CONSTRAINT "doctor_info_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "doctor_secretaries" ADD CONSTRAINT "doctor_secretaries_doctor_id_profiles_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "doctor_secretaries" ADD CONSTRAINT "doctor_secretaries_secretary_id_profiles_id_fk" FOREIGN KEY ("secretary_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "doctor_info" ADD CONSTRAINT "doctor_info_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "doctor_secretaries" ADD CONSTRAINT "doctor_secretaries_doctor_id_users_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "doctor_secretaries" ADD CONSTRAINT "doctor_secretaries_secretary_id_users_id_fk" FOREIGN KEY ("secretary_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "doctor_specializations" ADD CONSTRAINT "doctor_specializations_doctor_id_doctor_info_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."doctor_info"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "doctor_specializations" ADD CONSTRAINT "doctor_specializations_specialization_id_specializations_id_fk" FOREIGN KEY ("specialization_id") REFERENCES "public"."specializations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "hospital_employees" ADD CONSTRAINT "hospital_employees_hospital_id_hospital_id_fk" FOREIGN KEY ("hospital_id") REFERENCES "public"."hospital"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "hospital_employees" ADD CONSTRAINT "hospital_employees_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "hospital_employees" ADD CONSTRAINT "hospital_employees_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "hospital_specializations" ADD CONSTRAINT "hospital_specializations_hospital_id_hospital_id_fk" FOREIGN KEY ("hospital_id") REFERENCES "public"."hospital"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "hospital_specializations" ADD CONSTRAINT "hospital_specializations_specialization_id_specializations_id_fk" FOREIGN KEY ("specialization_id") REFERENCES "public"."specializations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "running_counter" ADD CONSTRAINT "running_counter_doctor_id_doctor_info_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."doctor_info"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "token_info" ADD CONSTRAINT "token_info_doctor_id_doctor_info_id_fk" FOREIGN KEY ("doctor_id") REFERENCES "public"."doctor_info"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "token_info" ADD CONSTRAINT "token_info_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_profiles_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "token_info" ADD CONSTRAINT "token_info_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_info" ADD CONSTRAINT "user_info_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_role_id_role_info_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."role_info"("id") ON DELETE no action ON UPDATE no action;

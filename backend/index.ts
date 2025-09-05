@@ -3,15 +3,31 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import multer from "multer";
-import seed from 'src/db/seed';
-import { db } from 'src/db/db_index';
-import { Person } from 'shared-types';
+import seed from './src/db/seed';
+import { db } from './src/db/db_index';
+import mainRouter from './src/main-router';
+import initFunc from './src/lib/init';
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+((async() => {
+  // Initialize the database with seed data
+  await seed();
+  
+  // Initialize application services
+  try {
+    await initFunc();
+  } catch (error) {
+    console.error('Application failed to initialize properly:', error);
+  }
+})())
+
+app.use('/api', mainRouter)
+
 // app.use(multer({
 //   limits: {
 //     fileSize: 10 * 1024 * 1024, // 10 MB

@@ -1,5 +1,5 @@
 {
-  "id": "f904f462-469b-40f9-9a08-edbb2d583b87",
+  "id": "e8cc59d8-5bf4-415b-8f8f-879936ac6edf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -133,10 +133,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "doctor_info_user_id_profiles_id_fk": {
-          "name": "doctor_info_user_id_profiles_id_fk",
+        "doctor_info_user_id_users_id_fk": {
+          "name": "doctor_info_user_id_users_id_fk",
           "tableFrom": "doctor_info",
-          "tableTo": "profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
@@ -180,10 +180,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "doctor_secretaries_doctor_id_profiles_id_fk": {
-          "name": "doctor_secretaries_doctor_id_profiles_id_fk",
+        "doctor_secretaries_doctor_id_users_id_fk": {
+          "name": "doctor_secretaries_doctor_id_users_id_fk",
           "tableFrom": "doctor_secretaries",
-          "tableTo": "profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "doctor_id"
           ],
@@ -193,10 +193,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "doctor_secretaries_secretary_id_profiles_id_fk": {
-          "name": "doctor_secretaries_secretary_id_profiles_id_fk",
+        "doctor_secretaries_secretary_id_users_id_fk": {
+          "name": "doctor_secretaries_secretary_id_users_id_fk",
           "tableFrom": "doctor_secretaries",
-          "tableTo": "profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "secretary_id"
           ],
@@ -321,10 +321,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "hospital_employees_user_id_profiles_id_fk": {
-          "name": "hospital_employees_user_id_profiles_id_fk",
+        "hospital_employees_user_id_users_id_fk": {
+          "name": "hospital_employees_user_id_users_id_fk",
           "tableFrom": "hospital_employees",
-          "tableTo": "profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
@@ -489,6 +489,12 @@
         "description": {
           "name": "description",
           "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         }
@@ -704,10 +710,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "token_info_user_id_profiles_id_fk": {
-          "name": "token_info_user_id_profiles_id_fk",
+        "token_info_user_id_users_id_fk": {
+          "name": "token_info_user_id_users_id_fk",
           "tableFrom": "token_info",
-          "tableTo": "profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
@@ -730,6 +736,59 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_info": {
+      "name": "user_info",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_suspended": {
+          "name": "is_suspended",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "active_token_version": {
+          "name": "active_token_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_info_user_id_users_id_fk": {
+          "name": "user_info_user_id_users_id_fk",
+          "tableFrom": "user_info",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -760,10 +819,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "user_roles_user_id_profiles_id_fk": {
-          "name": "user_roles_user_id_profiles_id_fk",
+        "user_roles_user_id_users_id_fk": {
+          "name": "user_roles_user_id_users_id_fk",
           "tableFrom": "user_roles",
-          "tableTo": "profiles",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
@@ -802,8 +861,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.profiles": {
-      "name": "profiles",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -813,7 +872,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "profiles_id_seq",
+            "name": "users_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -828,6 +887,12 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
         },
         "email": {
           "name": "email",
@@ -865,15 +930,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "profiles_email_unique": {
-          "name": "profiles_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        },
-        "profiles_mobile_unique": {
-          "name": "profiles_mobile_unique",
+        "users_mobile_unique": {
+          "name": "users_mobile_unique",
           "nullsNotDistinct": false,
           "columns": [
             "mobile"
@@ -891,6 +949,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "email"
+          ]
+        },
+        "unique_username": {
+          "name": "unique_username",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
           ]
         }
       },

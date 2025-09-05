@@ -1,12 +1,13 @@
-import { pgTable, integer, varchar, date, unique, boolean } from "drizzle-orm/pg-core";
+import { pgTable, integer, varchar, date, unique, boolean, text, timestamp, numeric } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const usersTable = pgTable(
-	"profiles",
+	"users",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
 		name: varchar({ length: 255 }).notNull(),
-		email: varchar({ length: 255 }).unique(),
+		username: varchar({ length: 255 }),  // Optional, will be null for regular users
+		email: varchar({ length: 255 }),
 		mobile: varchar({ length: 255 }).notNull().unique(),
 		joinDate: date("join_date").notNull().default("now()"),
 		address: varchar({ length: 500 }),
@@ -15,6 +16,7 @@ export const usersTable = pgTable(
 	(t) => ({
 		unq_mobile: unique("unique_mobile").on(t.mobile),
 		unq_email: unique("unique_email").on(t.email),
+		unq_username: unique("unique_username").on(t.username),
 	})
 );
 
@@ -24,6 +26,7 @@ export const roleInfoTable = pgTable(
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
 		name: varchar({ length: 255 }).notNull(),
 		description: varchar({ length: 500 }),
+		displayName: varchar("display_name", { length: 255 }).notNull(),
 	}
 );
 
@@ -39,7 +42,24 @@ export const userRolesTable = pgTable(
 	})
 );
 
-export const usersTableRelations = relations(usersTable, ({ many }) => ({
+// Add relations for roleInfoTable
+export const roleInfoTableRelations = relations(roleInfoTable, ({ many }) => ({
+	userRoles: many(userRolesTable)
+}));
+
+// Add relations for userRolesTable
+export const userRolesTableRelations = relations(userRolesTable, ({ one }) => ({
+	user: one(usersTable, {
+		fields: [userRolesTable.userId],
+		references: [usersTable.id]
+	}),
+	role: one(roleInfoTable, {
+		fields: [userRolesTable.roleId],
+		references: [roleInfoTable.id]
+	})
+}));
+
+export const usersTableRelations = relations(usersTable, ({ many, one }) => ({
 	roles: many(userRolesTable),
 	doctorSecretaries: many(doctorSecretariesTable, {
 		relationName: "doctor",
@@ -47,7 +67,16 @@ export const usersTableRelations = relations(usersTable, ({ many }) => ({
 	secretaryForDoctors: many(doctorSecretariesTable, {
 		relationName: "secretary",
 	}),
-	tokens: many(tokenInfoTable),
+	tokens: many(tokenInfoTable, {
+		relationName: "userTokens",
+	}),
+	doctorTokens: many(tokenInfoTable, {
+		relationName: "doctorTokens",
+	}),
+	userInfo: one(userInfoTable),
+	doctorSpecializations: many(doctorSpecializationsTable),
+	doctorAvailability: many(doctorAvailabilityTable),
+	runningCounters: many(runningCounterTable),
 }));
 
 
@@ -104,14 +133,15 @@ export const doctorInfoTable = pgTable(
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
 		userId: integer("user_id").notNull().references(() => usersTable.id).unique(),
 		qualifications: varchar({ length: 1000 }),
-		dailyTokenCount: integer("daily_token_count").notNull().default(0),
+		dailyTokenCount: integer("daily_token_count").notNull().default(20),
+		consultationFee: numeric("consultation_fee", { precision: 10, scale: 2 }).notNull().default("0"),
 	}
 );
 
 export const doctorSpecializationsTable = pgTable(
 	"doctor_specializations",
 	{
-		doctorId: integer("doctor_id").notNull().references(() => doctorInfoTable.id),
+		doctorId: integer("doctor_id").notNull().references(() => usersTable.id),
 		specializationId: integer("specialization_id").notNull().references(() => specializationsTable.id),
 	},
 	(t) => ({
@@ -119,15 +149,26 @@ export const doctorSpecializationsTable = pgTable(
 	})
 );
 
+export const doctorSpecializationsTableRelations = relations(doctorSpecializationsTable, ({ one }) => ({
+	doctor: one(usersTable, {
+		fields: [doctorSpecializationsTable.doctorId],
+		references: [usersTable.id]
+	}),
+	specialization: one(specializationsTable, {
+		fields: [doctorSpecializationsTable.specializationId],
+		references: [specializationsTable.id]
+	})
+}));
+
 export const doctorInfoTableRelations = relations(doctorInfoTable, ({ one, many }) => ({
 	user: one(usersTable, {
 		fields: [doctorInfoTable.userId],
 		references: [usersTable.id],
 	}),
-	specializations: many(doctorSpecializationsTable),
-	availability: many(doctorAvailabilityTable),
-	tokens: many(tokenInfoTable),
-	counters: many(runningCounterTable),
+	// specializations now reference usersTable directly, not doctorInfoTable
+	// availability now references usersTable directly, not doctorInfoTable
+	// tokens now reference usersTable directly, not doctorInfoTable
+	// counters now reference usersTable directly, not doctorInfoTable
 }));
 
 export const doctorSecretariesTable = pgTable(
@@ -156,10 +197,11 @@ export const doctorAvailabilityTable = pgTable(
 	"doctor_availability",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		doctorId: integer("doctor_id").notNull().references(() => doctorInfoTable.id),
+		doctorId: integer("doctor_id").notNull().references(() => usersTable.id),
 		date: date("date").notNull(),
 		totalTokenCount: integer("total_token_count").notNull().default(0),
 		filledTokenCount: integer("filled_token_count").notNull().default(0),
+		consultationsDone: integer("consultations_done").notNull().default(0),
 		isStopped: boolean("is_stopped").notNull().default(false),
 	},
 	(t) => ({
@@ -168,9 +210,9 @@ export const doctorAvailabilityTable = pgTable(
 );
 
 export const doctorAvailabilityRelations = relations(doctorAvailabilityTable, ({ one }) => ({
-	doctor: one(doctorInfoTable, {
+	doctor: one(usersTable, {
 		fields: [doctorAvailabilityTable.doctorId],
-		references: [doctorInfoTable.id],
+		references: [usersTable.id],
 	}),
 }));
 
@@ -178,8 +220,8 @@ export const tokenInfoTable = pgTable(
 	"token_info",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		doctorId: integer("doctor_id").notNull().references(() => doctorInfoTable.id),
-		userId: integer("user_id").notNull().references(() => usersTable.id),
+		doctorId: integer("doctor_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+		userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
 		tokenDate: date("token_date").notNull(),
 		queueNum: integer("queue_num").notNull(),
 		description: varchar({ length: 1000 }),
@@ -195,9 +237,9 @@ export const tokenInfoTable = pgTable(
 );
 
 export const tokenInfoRelations = relations(tokenInfoTable, ({ one }) => ({
-	doctor: one(doctorInfoTable, {
+	doctor: one(usersTable, {
 		fields: [tokenInfoTable.doctorId],
-		references: [doctorInfoTable.id],
+		references: [usersTable.id],
 	}),
 	user: one(usersTable, {
 		fields: [tokenInfoTable.userId],
@@ -210,7 +252,7 @@ export const runningCounterTable = pgTable(
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
 		date: date("date").notNull(),
-		doctorId: integer("doctor_id").notNull().references(() => doctorInfoTable.id),
+		doctorId: integer("doctor_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
 		count: integer("count").notNull().default(0),
 		lastUpdated: date("last_updated").notNull().default("now()"),
 	},
@@ -220,9 +262,25 @@ export const runningCounterTable = pgTable(
 );
 
 export const runningCounterRelations = relations(runningCounterTable, ({ one }) => ({
-	doctor: one(doctorInfoTable, {
+	doctor: one(usersTable, {
 		fields: [runningCounterTable.doctorId],
-		references: [doctorInfoTable.id],
+		references: [usersTable.id],
 	}),
 }));
 
+export const userInfoTable = pgTable(
+	"user_info",
+	{
+		userId: integer("user_id").notNull().references(() => usersTable.id).primaryKey(),
+		password: varchar("password", { length: 255 }).notNull(),
+		isSuspended: boolean("is_suspended").notNull().default(false),
+		activeTokenVersion: integer("active_token_version").notNull().default(1),
+	}
+);
+
+export const userInfoRelations = relations(userInfoTable, ({ one }) => ({
+	user: one(usersTable, {
+		fields: [userInfoTable.userId],
+		references: [usersTable.id],
+	}),
+}));

@@ -35,7 +35,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRoles } from "@/components/context/roles-context";
 import { useAuth } from "@/components/context/auth-context";
 import { useCurrentUserId } from "@/hooks/useCurrentUserId";
-import { useGetUserById } from "../api-hooks/user.api";
+import { useGetUserById } from "../../api-hooks/user.api";
+import { useGetMyDoctors } from "@/api-hooks/my-doctors.api";
+import { ROLE_NAMES } from "@/lib/constants";
 
 
 interface Props {}
@@ -48,7 +50,6 @@ function _layout(props: Props) {
   const { roles, refreshRoles } = useRoles();
   const isAdmin = roles?.includes("admin");
   const router = useRouter();
-  const [count, setCount] = React.useState(0);
 
   useEffect(() => {
     refreshRoles();
@@ -121,6 +122,26 @@ function _layout(props: Props) {
             name="dashboard"
             options={{
               title: "Dashboard",
+              headerShown: true, // Show header only for dashboard root
+              drawerIcon: ({
+                color,
+                focused,
+              }: {
+                focused: boolean;
+                color: string;
+              }) => (
+                <MaterialCommunityIcons
+                  color={focused ? theme.colors.blue1 : theme.colors.gray1}
+                  name="view-dashboard-outline"
+                  size={24}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="login"
+            options={{
+              title: "Login",
               headerShown: true, // Show header only for dashboard root
               drawerIcon: ({
                 color,
@@ -246,7 +267,7 @@ function _layout(props: Props) {
               ),
             }}
           /> */}
-          {/* <Drawer.Screen
+          <Drawer.Screen
             name="admin-panel"
             options={{
               title: "Admin Panel",
@@ -266,7 +287,7 @@ function _layout(props: Props) {
                 />
               ),
             }}
-          /> */}
+          />
           {/* <Drawer.Screen
             name="profile"
             options={{
@@ -359,8 +380,16 @@ function CustomDrawerContent(props: any) {
   const { theme } = useTheme();
   const userId = useCurrentUserId();
   const { data: user } = useGetUserById(userId || undefined);
+  const router = useRouter();
+  
+  const isHospitalAdmin = useRoles().roles?.includes(ROLE_NAMES.HOSPITAL_ADMIN);
+  const isDoctorSecretary = useRoles().roles?.includes(ROLE_NAMES.DOCTOR_SECRETARY);
+  const shouldFetchMyDoctors = Boolean(isHospitalAdmin) || Boolean(isDoctorSecretary);
+  const { data: myDoctors } = useGetMyDoctors({
+    enabled: shouldFetchMyDoctors,
+  });
 
-  const hiddenRoutes = ["users", "home", "notifications", "not-found", 'login'];
+  const hiddenRoutes = ["users", "home", "notifications", "not-found", 'login', 'signup'];
   const adminOnlyRoutes = ["admin-panel"];
   const { logout } = useAuth();
   const { roles, refreshRoles } = useRoles();
@@ -479,6 +508,66 @@ function CustomDrawerContent(props: any) {
             </React.Fragment>
           );
         })}
+        
+        {/* My Doctors Section */}
+        {shouldFetchMyDoctors && myDoctors && myDoctors.length > 0 && (
+          <View style={{ marginTop: 10 }}>
+            <View style={{ 
+              paddingHorizontal: 16, 
+              paddingVertical: 8, 
+              backgroundColor: theme.colors.gray3,
+              marginBottom: 8 
+            }}>
+              <MyText weight="bold" color="blue1">My Doctors</MyText>
+            </View>
+            
+            {myDoctors.map((doctor) => (
+              <DrawerItem
+                key={`doctor-${doctor.id}`}
+                label={({
+                  focused,
+                  color,
+                }: {
+                  focused: boolean;
+                  color: string;
+                }) => (
+                  <View
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <MaterialIcons
+                        name="person"
+                        color={theme.colors.blue1}
+                        size={18}
+                        style={{ marginRight: 8 }}
+                      />
+                      <MyText
+                        weight={focused ? "bold" : "light"}
+                        color={focused ? "blue1" : "gray1"}
+                        numberOfLines={1}
+                        style={{ maxWidth: 150 }}
+                      >
+                        {doctor.name}
+                      </MyText>
+                    </View>
+                    <MaterialIcons
+                      name="chevron-right"
+                      color={theme.colors.gray1}
+                      size={20}
+                    />
+                  </View>
+                )}
+                onPress={() => router.push(`/(drawer)/dashboard/doctor-details/${doctor.id}` as any)}
+                activeBackgroundColor={theme.colors.white1}
+              />
+            ))}
+          </View>
+        )}
       </DrawerContentScrollView>
       <View
         style={{
@@ -492,7 +581,7 @@ function CustomDrawerContent(props: any) {
         }}
       >
         <MyButton
-        //   onPress={() => logout({})}
+          onPress={() => logout({})}
           style={{ flexGrow: 1, marginBottom: 16, marginHorizontal: 8 }}
         >
           Logout
