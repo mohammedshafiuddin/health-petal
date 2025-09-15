@@ -11,7 +11,6 @@ import { ApiError } from "../lib/api-error";
  * Later we can replace this with a more sophisticated recommendation algorithm
  */
 export const getFeaturedDoctors = async (req: Request, res: Response, next: NextFunction) => {
-  try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
     
     if (isNaN(limit) || limit < 1) {
@@ -80,11 +79,8 @@ export const getFeaturedDoctors = async (req: Request, res: Response, next: Next
         };
       })
     );
-
+    
     return res.status(200).json(doctorsWithDetails);
-  } catch (error) {
-    next(error);
-  }
 };
 
 /**

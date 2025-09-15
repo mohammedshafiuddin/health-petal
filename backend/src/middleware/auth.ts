@@ -16,6 +16,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
     
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new ApiError('Access denied. No token provided', 401);
     }
@@ -28,6 +29,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    
     
     // Add user info to request
     req.user = decoded;

@@ -7,6 +7,7 @@ import DoctorDetails from '@/components/doctor-details'
 import { useRouter } from 'expo-router'
 import { ThemedView } from '@/components/ThemedView'
 import { useThemeColor } from '@/hooks/useThemeColor'
+import AppContainer from '@/components/app-container'
 
 interface UserDashboardProps {
   // Add any props you might need to pass to the dashboard
@@ -20,8 +21,10 @@ const UserDashboard: React.FC<UserDashboardProps> = (props) => {
     const { data: featuredDoctors, isLoading: isLoadingDoctors, error: doctorsError } = useFeaturedDoctors(3)
     const { data: featuredHospitals, isLoading: isLoadingHospitals, error: hospitalsError } = useFeaturedHospitals(3)
 
+    
     return (
-        <ScrollView style={tw`flex-1`} contentContainerStyle={tw`p-4 pb-20`}>
+        <AppContainer>
+
             {/* Featured Doctors Section */}
             <View style={tw`mb-8`}>
                 <View style={tw`flex-row justify-between items-center mb-4`}>
@@ -111,7 +114,7 @@ const UserDashboard: React.FC<UserDashboardProps> = (props) => {
                     </ThemedView>
                 )}
             </View>
-        </ScrollView>
+        </AppContainer>
     )
 }
 

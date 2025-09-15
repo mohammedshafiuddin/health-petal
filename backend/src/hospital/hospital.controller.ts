@@ -9,6 +9,8 @@ import {
 } from "../db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { DESIGNATIONS } from "../lib/const-strings";
+import { imageUploadS3 } from "../lib/s3-client";
+import { ApiError } from "../lib/api-error";
 
 /**
  * Create a new hospital
@@ -43,6 +45,20 @@ export const createHospital = async (req: Request, res: Response) => {
             userId: adminId,
             designation: DESIGNATIONS.HOSPITAL_ADMIN
           });
+      }
+
+      // Handle hospitalImages upload
+      let imageUrls: string[] = [];
+      if (req.files) {
+        imageUrls = await Promise.all(
+          (req.files as Express.Multer.File[]).map((file) =>
+            imageUploadS3(
+              file.buffer,
+              file.mimetype,
+              `hospital-images/${Date.now()}_${file.originalname}`
+            )
+          )
+        );
       }
 
       return res.status(201).json({
@@ -101,72 +117,123 @@ export const getHospitalById = async (req: Request, res: Response) => {
  * Update a hospital
  */
 export const updateHospital = async (req: Request, res: Response) => {
-  try {
+
     const { id } = req.params;
-    const { name, description, address, adminId } = req.body;
-    
-    // Validate required fields
+    const { name, description, address, adminsToAdd, adminsToRemove, doctorsToAdd, doctorsToRemove } = req.body;
+
     if (!name || !address) {
-      return res.status(400).json({ error: "Name and address are required" });
+      throw new ApiError("Name and address are required", 400)
     }
-    
-    // Use a transaction to ensure both operations succeed or fail together
+
+    // Use a transaction to ensure all operations succeed or fail together
     return await db.transaction(async (tx) => {
       const [updatedHospital] = await tx
         .update(hospitalTable)
         .set({
           name,
           description,
-          address
+          address,
         })
         .where(eq(hospitalTable.id, parseInt(id)))
         .returning();
-      
+
       if (!updatedHospital) {
-        return res.status(404).json({ error: "Hospital not found" });
+        throw new ApiError("Hospital not found", 404)
       }
       
-      // If an adminId is provided, update the hospital admin
-      if (adminId) {
-        // First, check if this hospital already has an admin
-        const existingAdmin = await tx
-          .select()
-          .from(hospitalEmployeesTable)
-          .where(
-            eq(hospitalEmployeesTable.hospitalId, updatedHospital.id)
-          )
-          .limit(1);
-        
-        if (existingAdmin.length > 0) {
-          // Update the existing admin
+      // Process admins to remove if any
+      if (adminsToRemove && adminsToRemove.length > 0) {
+        for (const adminId of adminsToRemove) {
           await tx
-            .update(hospitalEmployeesTable)
-            .set({
-              userId: adminId,
-              designation: DESIGNATIONS.HOSPITAL_ADMIN
-            })
-            .where(eq(hospitalEmployeesTable.hospitalId, updatedHospital.id));
-        } else {
-          // Add a new admin
-          await tx
-            .insert(hospitalEmployeesTable)
-            .values({
-              hospitalId: updatedHospital.id,
-              userId: adminId,
-              designation: DESIGNATIONS.HOSPITAL_ADMIN
-            });
+            .delete(hospitalEmployeesTable)
+            .where(
+              and(
+                eq(hospitalEmployeesTable.hospitalId, updatedHospital.id),
+                eq(hospitalEmployeesTable.userId, adminId),
+                eq(hospitalEmployeesTable.designation, DESIGNATIONS.HOSPITAL_ADMIN)
+              )
+            );
         }
       }
-      
+
+      // Process admins to add if any
+      if (adminsToAdd && adminsToAdd.length > 0) {
+        for (const adminId of adminsToAdd) {
+          // Check if admin is already an employee of this hospital
+          const existingAdmin = await tx
+            .select()
+            .from(hospitalEmployeesTable)
+            .where(
+              and(
+                eq(hospitalEmployeesTable.hospitalId, updatedHospital.id),
+                eq(hospitalEmployeesTable.userId, adminId),
+                eq(hospitalEmployeesTable.designation, DESIGNATIONS.HOSPITAL_ADMIN)
+              )
+            )
+            .limit(1);
+
+          // Only add if not already an admin
+          if (existingAdmin.length === 0) {
+            await tx
+              .insert(hospitalEmployeesTable)
+              .values({
+                hospitalId: updatedHospital.id,
+                userId: adminId,
+                designation: DESIGNATIONS.HOSPITAL_ADMIN,
+              });
+          }
+        }
+      }
+
+      // Process doctors to remove if any
+      if (doctorsToRemove && doctorsToRemove.length > 0) {
+        for (const doctorId of doctorsToRemove) {
+          await tx
+            .delete(hospitalEmployeesTable)
+            .where(
+              and(
+                eq(hospitalEmployeesTable.hospitalId, updatedHospital.id),
+                eq(hospitalEmployeesTable.userId, doctorId),
+                eq(hospitalEmployeesTable.designation, DESIGNATIONS.DOCTOR)
+              )
+            );
+        }
+      }
+
+      // Process doctors to add if any
+      if (doctorsToAdd && doctorsToAdd.length > 0) {
+        for (const doctorId of doctorsToAdd) {
+          // Check if doctor is already an employee of this hospital
+          const existingDoctor = await tx
+            .select()
+            .from(hospitalEmployeesTable)
+            .where(
+              and(
+                eq(hospitalEmployeesTable.hospitalId, updatedHospital.id),
+                eq(hospitalEmployeesTable.userId, doctorId),
+                eq(hospitalEmployeesTable.designation, DESIGNATIONS.DOCTOR)
+              )
+            )
+            .limit(1);
+
+          // Only add if not already a doctor
+          if (existingDoctor.length === 0) {
+            await tx
+              .insert(hospitalEmployeesTable)
+              .values({
+                hospitalId: updatedHospital.id,
+                userId: doctorId,
+                designation: DESIGNATIONS.DOCTOR,
+              });
+          }
+        }
+      }
+
       return res.status(200).json({
         hospital: updatedHospital,
-        message: "Hospital updated successfully"
+        message: "Hospital updated successfully",
       });
     });
-  } catch (error) {
-    console.error("Update hospital error:", error);
-    return res.status(500).json({ error: "Failed to update hospital" });
-  }
 };
 
 /**
@@ -203,21 +270,21 @@ export const getHospitalAdminDashboard = async (req: Request, res: Response) => 
   try {
     const { hospitalId } = req.params;
     const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    
+
     // Validate hospital ID
     if (!hospitalId) {
       return res.status(400).json({ error: "Hospital ID is required" });
     }
-    
+
     // Get hospital details
     const hospital = await db.query.hospitalTable.findFirst({
       where: eq(hospitalTable.id, parseInt(hospitalId))
     });
-    
+
     if (!hospital) {
       return res.status(404).json({ error: "Hospital not found" });
     }
-    
+
     // Get doctors working at this hospital
     const hospitalDoctors = await db
       .select({
@@ -232,39 +299,57 @@ export const getHospitalAdminDashboard = async (req: Request, res: Response) => 
       .innerJoin(usersTable, eq(hospitalEmployeesTable.userId, usersTable.id))
       .innerJoin(doctorInfoTable, eq(usersTable.id, doctorInfoTable.userId))
       .where(eq(hospitalEmployeesTable.hospitalId, parseInt(hospitalId)));
-    
+
+    // Get admins working at this hospital
+    const hospitalAdmins = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        profilePicUrl: usersTable.profilePicUrl
+      })
+      .from(hospitalEmployeesTable)
+      .innerJoin(usersTable, eq(hospitalEmployeesTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(hospitalEmployeesTable.hospitalId, parseInt(hospitalId)),
+          eq(hospitalEmployeesTable.designation, DESIGNATIONS.HOSPITAL_ADMIN)
+        )
+      );
+
     // Fetch all doctor IDs for efficient querying
-    const doctorIds = hospitalDoctors.map(doctor => doctor.id);
-    
+    const doctorIds = hospitalDoctors.map((doctor) => doctor.id);
+
     // Early return if no doctors found
     if (doctorIds.length === 0) {
       return res.status(200).json({
         hospital,
-        doctors: []
+        doctors: [],
+        admins: hospitalAdmins
       });
     }
-    
+
     // Get today's availability for all doctors
     const doctorAvailabilities = await db
       .select()
       .from(doctorAvailabilityTable)
       .where(
         and(
-          sql`${doctorAvailabilityTable.doctorId} IN (${doctorIds.join(',')})`,
+          sql`${doctorAvailabilityTable.doctorId} IN (${doctorIds.join(",")})`,
           eq(doctorAvailabilityTable.date, currentDate)
         )
       );
-    
+
     // Organize data by doctor
-    const doctorsWithDetails = hospitalDoctors.map(doctor => {
+    const doctorsWithDetails = hospitalDoctors.map((doctor) => {
       // Get today's availability for this doctor
-      const availability = doctorAvailabilities.find(avail => avail.doctorId === doctor.id) || {
-        totalTokenCount: doctor.dailyTokenCount,
-        filledTokenCount: 0,
-        consultationsDone: 0,
-        isStopped: false
-      };
-      
+      const availability =
+        doctorAvailabilities.find((avail) => avail.doctorId === doctor.id) || {
+          totalTokenCount: doctor.dailyTokenCount,
+          filledTokenCount: 0,
+          consultationsDone: 0,
+          isStopped: false
+        };
+
       return {
         id: doctor.id,
         name: doctor.name,
@@ -279,7 +364,7 @@ export const getHospitalAdminDashboard = async (req: Request, res: Response) => 
         availableTokens: availability.totalTokenCount - availability.filledTokenCount
       };
     });
-    
+
     return res.status(200).json({
       hospital: {
         id: hospital.id,
@@ -288,6 +373,7 @@ export const getHospitalAdminDashboard = async (req: Request, res: Response) => 
         description: hospital.description
       },
       doctors: doctorsWithDetails,
+      admins: hospitalAdmins,
       currentDate,
       totalDoctors: doctorsWithDetails.length,
       totalAppointmentsToday: doctorsWithDetails.reduce((acc, doc) => acc + doc.tokensIssuedToday, 0),

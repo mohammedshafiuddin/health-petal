@@ -1,8 +1,30 @@
 import { NextFunction, Request, Response } from "express";
 import { db } from "../db/db_index";
-import { tokenInfoTable, doctorInfoTable, doctorAvailabilityTable, runningCounterTable, usersTable } from "../db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { 
+  tokenInfoTable, 
+  doctorInfoTable, 
+  doctorAvailabilityTable, 
+  usersTable, 
+  hospitalEmployeesTable, 
+  doctorSpecializationsTable, 
+  specializationsTable,
+  hospitalTable
+} from "../db/schema";
+import { eq, and, sql, desc, gte, inArray } from "drizzle-orm";
 import { ApiError } from "../lib/api-error";
+import { 
+  UpcomingToken, 
+  MyTokensResponse, 
+  BookTokenPayload, 
+  BookTokenResponse,
+  PastToken,
+  PastTokensResponse,
+  HospitalTodaysTokensResponse,
+  DoctorTokenSummary,
+  DoctorTodaysTokensResponse,
+  DoctorTodayToken
+} from "shared-types";
+import { DESIGNATIONS } from "../lib/const-strings";
 
 /**
  * Book a token for a doctor
@@ -82,7 +104,6 @@ export const bookToken = async (req: Request, res: Response, next: NextFunction)
       throw new ApiError("No more appointments available for this date", 400);
     }
     
-    console.log(`Doctor ${doctorId} on ${formattedDate}: Total: ${totalTokens}, Filled: ${filledTokens}, Available: ${availableTokens}`);
     
     // Use a transaction to ensure data consistency
     return await db.transaction(async (tx) => {
@@ -98,7 +119,8 @@ export const bookToken = async (req: Request, res: Response, next: NextFunction)
           tokenDate: formattedDate,
           queueNum: nextQueueNumber,
           description: description || null,
-          createdAt: new Date().toISOString().split('T')[0]
+          createdAt: new Date().toISOString().split('T')[0],
+          paymentId: Number(2) // Placeholder, to be updated after payment integration
         })
         .returning();
       
@@ -110,19 +132,22 @@ export const bookToken = async (req: Request, res: Response, next: NextFunction)
         })
         .where(eq(doctorAvailabilityTable.id, availability.id));
       
-      // Return success response
-      return res.status(201).json({
+      // Create response object using shared type
+      const response: BookTokenResponse = {
         message: "Token booked successfully",
         token: {
           id: newToken.id,
           doctorId: newToken.doctorId,
           userId: newToken.userId,
           tokenDate: newToken.tokenDate,
-          queueNum: newToken.queueNum,
-          description: newToken.description
-        },
-        remainingTokens: availableTokens - 1
-      });
+          queueNumber: newToken.queueNum,
+          description: newToken.description,
+          createdAt: newToken.createdAt
+        }
+      };
+      
+      // Return success response
+      return res.status(201).json(response);
     });
   } catch (error) {
     next(error);
@@ -139,7 +164,7 @@ export const bookToken = async (req: Request, res: Response, next: NextFunction)
 export const updateDoctorAvailability = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Extract data from request body
-    const { doctorId, date, tokenCount, isStopped, filledTokenCount, consultationsDone } = req.body;
+    const { doctorId, date, tokenCount, isStopped, filledTokenCount, consultationsDone, isLeave } = req.body;
     
     // Validate required fields
     if (!doctorId || !date || tokenCount === undefined) {
@@ -194,12 +219,12 @@ export const updateDoctorAvailability = async (req: Request, res: Response, next
             totalTokenCount: tokenCount,
             isStopped: isStopped !== undefined ? isStopped : existingAvailability.isStopped,
             filledTokenCount: filledTokenCount !== undefined ? filledTokenCount : existingAvailability.filledTokenCount,
-            consultationsDone: consultationsDone !== undefined ? consultationsDone : existingAvailability.consultationsDone
+            consultationsDone: consultationsDone !== undefined ? consultationsDone : existingAvailability.consultationsDone,
+            isLeave: isLeave !== undefined ? isLeave : existingAvailability.isLeave
           })
           .where(eq(doctorAvailabilityTable.id, existingAvailability.id))
           .returning();
           
-        console.log(`Updated availability for doctor ${doctorId} on ${formattedDate}`);
       } else {
         // Create new availability record
         [availability] = await tx
@@ -214,7 +239,6 @@ export const updateDoctorAvailability = async (req: Request, res: Response, next
           })
           .returning();
           
-        console.log(`Created new availability for doctor ${doctorId} on ${formattedDate}`);
       }
       
       // Return success response
@@ -301,7 +325,10 @@ export const getDoctorAvailabilityForNextDays = async (req: Request, res: Respon
             filledTokenCount: availability.filledTokenCount,
             consultationsDone: availability.consultationsDone,
             isStopped: availability.isStopped,
-            availableTokens: availability.totalTokenCount - availability.filledTokenCount
+            availableTokens: availability.totalTokenCount - availability.filledTokenCount,
+            isLeave: availability.isLeave,
+            isPaused: availability.isPaused,
+            pauseReason: availability.pauseReason ? availability.pauseReason : null
           } : null
         };
       })
@@ -313,6 +340,438 @@ export const getDoctorAvailabilityForNextDays = async (req: Request, res: Respon
       doctorId: parseInt(doctorId),
       availabilities: availabilityResults
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get all upcoming tokens for the current user
+ * This endpoint returns only future tokens (today or later), not past ones
+ * 
+ * @param req Request object with authenticated user
+ * @param res Response object
+ * @param next Next function
+ */
+export const getMyUpcomingTokens = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new ApiError("User not authenticated", 401);
+    }
+
+    const userId = req.user.userId;
+    
+    // Get current date in YYYY-MM-DD format
+    const today = new Date();
+    const formattedToday = today.toISOString().split('T')[0];
+    
+    // Query tokens for this user that are from today onwards
+    const tokens = await db.query.tokenInfoTable.findMany({
+      where: and(
+        eq(tokenInfoTable.userId, userId),
+        gte(tokenInfoTable.tokenDate, formattedToday)
+      ),
+      orderBy: [tokenInfoTable.tokenDate, tokenInfoTable.queueNum],
+      with: {
+        doctor: {
+          columns: {
+            id: true,
+            name: true,
+            mobile: true,
+            profilePicUrl: true,
+          }
+        }
+      }
+    });
+    
+    // For each token, fetch the current consultation number from doctorAvailability
+    const tokensWithConsultationNumbers = await Promise.all(tokens.map(async (token) => {
+      // Get the doctor's availability for this token's date
+      const availability = await db.query.doctorAvailabilityTable.findFirst({
+        where: and(
+          eq(doctorAvailabilityTable.doctorId, token.doctorId),
+          eq(doctorAvailabilityTable.date, token.tokenDate)
+        )
+      });
+      
+      return {
+        ...token,
+        currentConsultationNumber: availability?.consultationsDone || 0
+      };
+    }));
+    
+    // Format the response with relevant token information
+    const formattedTokens: UpcomingToken[] = tokensWithConsultationNumbers.map(token => ({
+      id: token.id,
+      tokenDate: token.tokenDate,
+      queueNumber: token.queueNum,
+      description: token.description,
+      createdAt: token.createdAt,
+      currentConsultationNumber: token.currentConsultationNumber,
+      doctor: {
+        id: token.doctor.id,
+        name: token.doctor.name,
+        mobile: token.doctor.mobile,
+        profilePicUrl: token.doctor.profilePicUrl
+      }
+    }));
+    
+    const response: MyTokensResponse = {
+      message: "Upcoming tokens retrieved successfully",
+      tokens: formattedTokens
+    };
+    
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get all past tokens for the current user
+ * This endpoint returns only past tokens (before today), not upcoming ones
+ * 
+ * @param req Request object with authenticated user
+ * @param res Response object
+ * @param next Next function
+ */
+export const getMyPastTokens = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new ApiError("User not authenticated", 401);
+    }
+
+    const userId = req.user.userId;
+    
+    // Get current date in YYYY-MM-DD format
+    const today = new Date();
+    const formattedToday = today.toISOString().split('T')[0];
+    
+    // Query tokens for this user that are before today
+    const tokens = await db.query.tokenInfoTable.findMany({
+      where: and(
+        eq(tokenInfoTable.userId, userId),
+        sql`${tokenInfoTable.tokenDate} < ${formattedToday}`
+      ),
+      orderBy: [desc(tokenInfoTable.tokenDate), tokenInfoTable.queueNum],
+      with: {
+        doctor: {
+          columns: {
+            id: true,
+            name: true,
+            mobile: true,
+            profilePicUrl: true,
+          }
+        }
+      }
+    });
+    
+    // Format the response with relevant token information
+    const formattedTokens: PastToken[] = tokens.map(token => ({
+      id: token.id,
+      tokenDate: token.tokenDate,
+      queueNumber: token.queueNum,
+      description: token.description,
+      createdAt: token.createdAt,
+      // For past tokens, default to 'COMPLETED' for simplicity
+      status: 'COMPLETED',
+      doctor: {
+        id: token.doctor.id,
+        name: token.doctor.name,
+        mobile: token.doctor.mobile,
+        profilePicUrl: token.doctor.profilePicUrl
+      }
+    }));
+    
+    const response: PastTokensResponse = {
+      message: "Past tokens retrieved successfully",
+      tokens: formattedTokens
+    };
+    
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get today's tokens for all doctors in a hospital (hospital admin view)
+ * 
+ * @param req Request object
+ * @param res Response object
+ * @param next Next function
+ */
+export const getHospitalTodaysTokens = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the current user's ID from the request object (set by verifyToken middleware)
+    const userId = req.user?.userId;
+
+    
+    if (!userId) {
+      
+      throw new ApiError("User not authenticated", 401);
+    }
+    
+    // Find the hospital where the user is an admin
+    const hospitalEmployee = await db.query.hospitalEmployeesTable.findFirst({
+      where: eq(hospitalEmployeesTable.userId, userId),
+    });
+    
+    if (!hospitalEmployee) {
+      throw new ApiError("User is not associated with any hospital", 404);
+    }
+    
+    const hospitalId = hospitalEmployee.hospitalId;
+    
+    // Get the hospital name
+    const hospital = await db.query.hospitalTable.findFirst({
+      where: eq(hospitalTable.id, hospitalId),
+    });
+    
+    
+    if (!hospital) {
+      throw new ApiError("Hospital not found", 404);
+    }
+    
+    // Get all doctors who work at this hospital
+    const hospitalDoctors = await db.query.hospitalEmployeesTable.findMany({
+      where: and(
+        eq(hospitalEmployeesTable.hospitalId, hospitalId),
+        eq(hospitalEmployeesTable.designation, DESIGNATIONS.DOCTOR)
+    ),
+
+    });
+    
+    
+    // Extract doctor IDs
+    const doctorIds = hospitalDoctors.map(doctor => doctor.userId);
+    
+    if (doctorIds.length === 0) {
+      // Return empty response if no doctors in hospital
+      const response: HospitalTodaysTokensResponse = {
+        message: "No doctors found in this hospital",
+        hospitalId,
+        hospitalName: hospital.name,
+        date: new Date().toISOString().split('T')[0],
+        doctors: [],
+      };
+      
+      return res.status(200).json(response);
+    }
+    
+    // Get today's date
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get doctor information with specializations and token summaries for each doctor
+    const doctorSummaries: DoctorTokenSummary[] = [];
+    
+    // Process each doctor
+    for (const doctorId of doctorIds) {
+      // Get doctor details
+      const doctor = await db.query.usersTable.findFirst({
+        where: eq(usersTable.id, doctorId),
+      });
+      
+      if (!doctor) continue;
+      
+      // Get doctor specializations
+      const doctorSpecializations = await db.query.doctorSpecializationsTable.findMany({
+        where: eq(doctorSpecializationsTable.doctorId, doctorId),
+        with: {
+          specialization: true,
+        },
+      });
+      
+      const specializationNames = doctorSpecializations.map(spec => spec.specialization.name);
+      
+      // Get today's availability
+      const availability = await db.query.doctorAvailabilityTable.findFirst({
+        where: and(
+          eq(doctorAvailabilityTable.doctorId, doctorId),
+          eq(doctorAvailabilityTable.date, today)
+        ),
+      });
+      
+      // Get tokens for today with patient details
+      const tokens = await db.query.tokenInfoTable.findMany({
+        where: and(
+          eq(tokenInfoTable.doctorId, doctorId),
+          eq(tokenInfoTable.tokenDate, today)
+        ),
+        with: {
+          user: true, // Include patient details
+        },
+        orderBy: tokenInfoTable.queueNum,
+      });
+      
+      // Calculate token statistics
+      const totalTokens = tokens.length;
+      const completedTokens = availability?.consultationsDone || 0;
+      const currentTokenNumber = availability ? availability.consultationsDone + 1 : null;
+      const inProgressTokens = currentTokenNumber && currentTokenNumber <= totalTokens ? 1 : 0;
+      const upcomingTokens = Math.max(0, totalTokens - completedTokens - inProgressTokens);
+      
+      // Format individual tokens for this doctor
+      const individualTokens = tokens.map(token => {
+        return {
+          id: token.id,
+          queueNumber: token.queueNum,
+          patientId: token.userId,
+          patientName: token.user.name,
+          patientMobile: token.user.mobile,
+          description: token.description
+        };
+      });
+      
+      // Add to summary with individual tokens
+      doctorSummaries.push({
+        id: doctorId,
+        name: doctor.name,
+        specializations: specializationNames,
+        totalTokens,
+        completedTokens,
+        inProgressTokens,
+        upcomingTokens,
+        currentTokenNumber,
+        tokens: individualTokens, // Include individual tokens
+      });
+    }
+    
+    // Create the response
+    const response: HospitalTodaysTokensResponse = {
+      message: "Today's tokens retrieved successfully",
+      hospitalId,
+      hospitalName: hospital.name,
+      date: today,
+      doctors: doctorSummaries,
+    };
+    
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get today's tokens for a specific doctor
+ * 
+ * @param req Request object containing doctorId
+ * @param res Response object
+ * @param next Next function
+ */
+export const getDoctorTodaysTokens = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const doctorId = parseInt(req.params.doctorId);
+    
+    if (isNaN(doctorId)) {
+      throw new ApiError("Invalid doctor ID", 400);
+    }
+    
+    // Get current user ID (for authorization check)
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      throw new ApiError("User not authenticated", 401);
+    }
+    
+    // Check if the doctor exists
+    const doctor = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, doctorId),
+    });
+    
+    if (!doctor) {
+      throw new ApiError("Doctor not found", 404);
+    }
+    
+    // Get today's date
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check if user is authorized to view this doctor's tokens
+    // Either the user is the doctor, or the user is a hospital admin where the doctor works
+    let isAuthorized = doctorId === userId;
+    
+    if (!isAuthorized) {
+      // Check if user is a hospital admin where the doctor works
+      const userHospital = await db.query.hospitalEmployeesTable.findFirst({
+        where: eq(hospitalEmployeesTable.userId, userId),
+      });
+      
+      if (userHospital) {
+        const doctorInSameHospital = await db.query.hospitalEmployeesTable.findFirst({
+          where: and(
+            eq(hospitalEmployeesTable.userId, doctorId),
+            eq(hospitalEmployeesTable.hospitalId, userHospital.hospitalId)
+          ),
+        });
+        
+        isAuthorized = !!doctorInSameHospital;
+      }
+    }
+    
+    if (!isAuthorized) {
+      throw new ApiError("Not authorized to view this doctor's tokens", 403);
+    }
+    
+    // Get the doctor's availability for today
+    const availability = await db.query.doctorAvailabilityTable.findFirst({
+      where: and(
+        eq(doctorAvailabilityTable.doctorId, doctorId),
+        eq(doctorAvailabilityTable.date, today)
+      ),
+    });
+    
+    // Get all tokens for the doctor for today
+    const tokens = await db.query.tokenInfoTable.findMany({
+      where: and(
+        eq(tokenInfoTable.doctorId, doctorId),
+        eq(tokenInfoTable.tokenDate, today)
+      ),
+      with: {
+        user: true,
+      },
+      orderBy: tokenInfoTable.queueNum,
+    });
+    
+    // Current token number (consultation in progress)
+    const currentTokenNumber = availability ? availability.consultationsDone + 1 : null;
+    const completedTokens = availability?.consultationsDone || 0;
+    
+    // Format the tokens with patient information and status
+    const formattedTokens: DoctorTodayToken[] = tokens.map(token => {
+      let status: 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED' | 'CANCELLED';
+      
+      if (token.queueNum < (currentTokenNumber || 0)) {
+        status = 'COMPLETED';
+      } else if (token.queueNum === currentTokenNumber) {
+        status = 'IN_PROGRESS';
+      } else {
+        status = 'UPCOMING';
+      }
+      
+      return {
+        id: token.id,
+        queueNumber: token.queueNum,
+        patientId: token.userId,
+        patientName: token.user.name,
+        patientMobile: token.user.mobile,
+        description: token.description,
+        status,
+      };
+    });
+    
+    // Create the response
+    const response: DoctorTodaysTokensResponse = {
+      message: "Doctor's today's tokens retrieved successfully",
+      doctorId,
+      doctorName: doctor.name,
+      date: today,
+      currentTokenNumber,
+      totalTokens: tokens.length,
+      completedTokens,
+      tokens: formattedTokens,
+    };
+    
+    res.status(200).json(response);
   } catch (error) {
     next(error);
   }

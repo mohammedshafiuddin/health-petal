@@ -11,8 +11,7 @@ import type {
   doctorSpecializationsTable,
   doctorSecretariesTable,
   doctorAvailabilityTable,
-  tokenInfoTable,
-  runningCounterTable
+  tokenInfoTable
 } from "./schema.js"
 
 // Basic types
@@ -28,7 +27,6 @@ export type DoctorSpecialization = InferSelectModel<typeof doctorSpecializations
 export type DoctorSecretary = InferSelectModel<typeof doctorSecretariesTable>
 export type DoctorAvailability = InferSelectModel<typeof doctorAvailabilityTable>
 export type TokenInfo = InferSelectModel<typeof tokenInfoTable>
-export type RunningCounter = InferSelectModel<typeof runningCounterTable>
 
 // Combined types with relations
 export type UserWithRoles = User & {

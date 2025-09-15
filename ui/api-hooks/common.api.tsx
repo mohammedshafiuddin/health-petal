@@ -15,7 +15,6 @@ export const useSpecializations = () => {
   return useQuery<Specialization[]>({
     queryKey: ['specializations'],
     queryFn: async () => {
-        console.log("Fetching specializations...");
 
       const response = await axios.get<Specialization[]>('/specializations');
       

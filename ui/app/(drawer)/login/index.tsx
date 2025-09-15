@@ -4,9 +4,8 @@ import { Text, TextInput, Button } from "react-native-paper";
 import { useForm, Controller } from "react-hook-form";
 import * as SecureStore from "expo-secure-store";
 
-
 import { useLogin, LoginResponse } from "@/api-hooks/auth.api";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { Link } from "expo-router";
 import MyButton from "@/components/button";
@@ -25,35 +24,27 @@ import { useState } from "react";
 import tw from "@/app/tailwind";
 import { SESSION_EXPIRED_MSG } from "@/lib/const-strs";
 // import { useNotification } from "@/notif-setup/notif-context";
-import { JWT_KEY, saveJWT, saveRoles } from "@/hooks/useJWT";
-import { useRoles } from "@/components/context/roles-context";
+import { getJWT, JWT_KEY, saveJWT, saveRoles } from "@/hooks/useJWT";
 import { useAuth } from "@/components/context/auth-context";
 import MyTextInput from "@/components/textinput";
 import { useTheme } from "@/app/hooks/theme.context";
 import BottomDialog from "@/components/dialog";
-import { useUserResponsibilities } from "@/api-hooks/user.api";
+import { useGetUserById, useUserResponsibilities } from "@/api-hooks/user.api";
+import useHideDrawerHeader from "@/hooks/useHideDrawerHeader";
+import { useCurrentUserId } from "@/hooks/useCurrentUserId";
 
 function Login() {
   // const { refetch: refetchResponsibilities } = useUserResponsibilities(  );
   const { message } = useLocalSearchParams();
   const isSessionExpired = message === SESSION_EXPIRED_MSG;
-//   const { expoPushToken } = useNotification();
+  //   const { expoPushToken } = useNotification();
+  useHideDrawerHeader();
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [useUsername, setUseUsername] = useState(false);
   const router = useRouter();
-  useEffect(() => {
-    (async () => {
-      const token = await SecureStore.getItemAsync(JWT_KEY);
 
-      if (token) {
-        // router.replace("/(drawer)/dashboard/(tabs)/to-mbnr");
-      } else {
-        setCheckingAuth(false);
-      }
-    })();
-  }, []);
 
   const {
     control,
@@ -65,69 +56,28 @@ function Login() {
     defaultValues: { login: "", password: "" },
   });
 
-  const { mutate: login, isPending: isLoggingIn } = useLogin();
+  const isLoggingIn = false;
   // router is already defined above
-  const { refreshRoles } = useRoles();
-  const { setIsLoggedIn } = useAuth();
+  const {loginFunc} = useAuth();
 
   const onSubmit = async (data: LoginFormInputs) => {
     clearErrors();
     if (!data.login || !data.password) {
       setError("login", {
         type: "manual",
-        message: useUsername ? "Username is required" : "Mobile number is required",
+        message: useUsername
+          ? "Username is required"
+          : "Mobile number is required",
       });
       setError("password", { type: "manual", message: "Password is required" });
       return;
     }
-    try {
-      const result = await new Promise<LoginResponse>((resolve, reject) =>
-        login(
-          { ...data, useUsername },
-          {
-            onSuccess: resolve,
-            onError: reject,
-          }
-        )
-      );
 
-      // Handle the response
-      if (result.user) {
-        // Store user ID for future reference
-        if (result.user.id) {
-          await StorageService.setItem('userId', result.user.id.toString());
-        }
+    loginFunc({...data, useUsername})
 
-        
-        // Save JWT token
-        await saveJWT(result.token);
-        
-        // Update login state in auth context
-        setIsLoggedIn(true);
-        
-        // Handle roles if available
-        if (result.user.roles) {
-          await saveRoles(result.user.roles);
-          await refreshRoles();
-        }
-
-        // refetchResponsibilities();
-        
-        // Clear the 'message' search param from the URL after login
-        router.replace({
-          pathname: "/(drawer)/dashboard",
-          params: {},
-        });
-      }
-    } catch (e: any) {
-      setError("login", {
-        type: "manual",
-        message: e.message || "Login failed",
-      });
-    }
   };
 
-  if (checkingAuth) return null;
+  // if (checkingAuth) return null;
 
   return (
     <View style={styles.container}>
@@ -146,27 +96,36 @@ function Login() {
           Your session has expired. Please log in again.
         </MyText>
       )}
-      
+
       {/* Username checkbox */}
       <View style={styles.checkboxContainer}>
-        <Checkbox 
-          checked={useUsername} 
-          onPress={() => setUseUsername(!useUsername)} 
+        <Checkbox
+          checked={useUsername}
+          onPress={() => setUseUsername(!useUsername)}
           style={styles.checkbox}
         />
-        <MyText onPress={() => setUseUsername(!useUsername)} style={styles.checkboxLabel}>
+        <MyText
+          onPress={() => setUseUsername(!useUsername)}
+          style={styles.checkboxLabel}
+        >
           Login with Username
         </MyText>
       </View>
-      
+
       <Controller
         control={control}
         name="login"
-        rules={{ required: useUsername ? "Username is required" : "Mobile number is required" }}
+        rules={{
+          required: useUsername
+            ? "Username is required"
+            : "Mobile number is required",
+        }}
         render={({ field: { onChange, onBlur, value } }) => (
           <MyTextInput
             label={useUsername ? "Username" : "Mobile Number"}
-            placeholder={useUsername ? "Enter your username" : "Enter your mobile number"}
+            placeholder={
+              useUsername ? "Enter your username" : "Enter your mobile number"
+            }
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -178,9 +137,7 @@ function Login() {
           />
         )}
       />
-      {errors.login && (
-        <Text style={styles.error}>{errors.login.message}</Text>
-      )}
+      {errors.login && <Text style={styles.error}>{errors.login.message}</Text>}
       <Controller
         control={control}
         name="password"
@@ -243,7 +200,10 @@ function Login() {
       >
         Login With OTP
       </MyButton>
-      <Link href="/(drawer)/signup" style={{ marginTop: 24, alignSelf: "center" }}>
+      <Link
+        href="/(drawer)/signup"
+        style={{ marginTop: 24, alignSelf: "center" }}
+      >
         <MyText color="blue1" style={{ textDecorationLine: "underline" }}>
           Don't have an account? Sign up
         </MyText>

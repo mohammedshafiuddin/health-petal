@@ -1,6 +1,6 @@
 import MyText from "@/components/text";
 import React from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, Alert, Image, TouchableOpacity } from "react-native";
 import MyTextInput from "@/components/textinput";
 import MyButton from "@/components/button";
 import { useTheme } from "@/app/hooks/theme.context";
@@ -13,6 +13,10 @@ import { useRouter } from "expo-router";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import tw from "@/app/tailwind";
+import useHideDrawerHeader from "@/hooks/useHideDrawerHeader";
+import AppContainer from "@/components/app-container";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import usePickImage from "@/hooks/usePickImage";
 
 interface Props {}
 
@@ -37,11 +41,20 @@ const SignupSchema = Yup.object().shape({
 function Index(props: Props) {
   const { theme } = useTheme();
   const router = useRouter();
+  const [profilePic, setProfilePic] = React.useState<{ uri?: string } | null>(
+    null
+  );
+  useHideDrawerHeader();
   const {
     mutate: createUser,
     isPending: isCreatingUser,
     error: createUserError,
   } = useCreateUser();
+
+  const handleProfilePicUpload = usePickImage({
+    setFile: setProfilePic,
+    multiple: false,
+  });
 
   const initialValues: CreateUserPayload & { confirmPassword: string } = {
     name: "",
@@ -54,9 +67,26 @@ function Index(props: Props) {
 
   const handleSubmit = async (values: typeof initialValues) => {
     try {
+      
       const { confirmPassword, ...userData } = values;
+      // Convert to FormData
+      const formData = new FormData();
+      Object.entries(userData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value as string);
+        }
+      });
+      // Attach profilePic property if present
+      if (profilePic && profilePic.uri) {
+        formData.append('profilePic', {
+          uri: profilePic.uri,
+          name: 'profile.jpg',
+          type: 'image/jpeg',
+        } as any);
+      }
 
-      createUser(userData, {
+      
+      createUser(formData, {
         onSuccess: (data: CreateUserResponse) => {
           Alert.alert(
             "Success",
@@ -70,6 +100,7 @@ function Index(props: Props) {
           );
         },
         onError: (error: any) => {
+          
           Alert.alert(
             "Error",
             error.message || "Failed to create account. Please try again."
@@ -77,6 +108,7 @@ function Index(props: Props) {
         },
       });
     } catch (error) {
+      
       console.error("Signup error:", error);
       Alert.alert(
         "Error",
@@ -86,10 +118,7 @@ function Index(props: Props) {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={tw`flex-grow p-5 bg-white`}
-      keyboardShouldPersistTaps="handled"
-    >
+    <AppContainer>
       <View style={tw`w-full max-w-[500px] self-center`}>
         <MyText style={tw`text-2xl mb-2 text-center font-bold`}>
           Create an Account
@@ -112,6 +141,76 @@ function Index(props: Props) {
             touched,
           }) => (
             <View>
+              {/* Profile Pic Field */}
+              <TouchableOpacity
+                onPress={handleProfilePicUpload}
+                activeOpacity={0.7}
+                style={{ alignSelf: "center", marginBottom: 8 }}
+              >
+                {profilePic && profilePic.uri ? (
+                  <View style={{ position: "relative" }}>
+                    <Image
+                      source={{ uri: profilePic.uri }}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        marginBottom: 8,
+                        backgroundColor: "#eee",
+                      }}
+                      resizeMode="cover"
+                    />
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: 4,
+                        bottom: 12,
+                        backgroundColor: "transparent",
+                        borderRadius: 12,
+                        padding: 2,
+                      }}
+                    >
+                      <Ionicons
+                        name="pencil"
+                        size={18}
+                        color={theme.colors.blue1}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 40,
+                      backgroundColor: "#eee",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 8,
+                      position: "relative",
+                    }}
+                  >
+                    <Ionicons name="person" size={48} color="#bbb" />
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: 4,
+                        bottom: 12,
+                        backgroundColor: "transparent",
+                        borderRadius: 12,
+                        padding: 2,
+                      }}
+                    >
+                      <Ionicons
+                        name="pencil"
+                        size={18}
+                        color={theme.colors.blue1}
+                      />
+                    </View>
+                  </View>
+                )}
+              </TouchableOpacity>
+
               <View style={tw`mb-4`}>
                 <MyTextInput
                   topLabel="Full Name"
@@ -234,7 +333,7 @@ function Index(props: Props) {
           </MyText>
         </View>
       </View>
-    </ScrollView>
+    </AppContainer>
   );
 }
 

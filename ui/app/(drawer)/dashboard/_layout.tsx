@@ -4,7 +4,6 @@ import { useAuth } from '@/components/context/auth-context'
 
 function DashboardLayout() {
     const { isLoggedIn, refreshResponsibilities, responsibilities } = useAuth();
-    console.log({responsibilities})
     
     
     // Refresh responsibilities when dashboard is loaded

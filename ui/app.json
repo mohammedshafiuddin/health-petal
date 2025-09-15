@@ -9,14 +9,25 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.victoriousshafi.ui",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "ppemerchantsdkv1",
+          "ppemerchantsdkv2",
+          "ppemerchantsdkv3",
+          "paytmmp",
+          "gpay"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.victoriousshafi.ui"
     },
     "web": {
       "bundler": "metro",
@@ -34,7 +45,8 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./withPhonepe.js"
     ],
     "experiments": {
       "typedRoutes": true

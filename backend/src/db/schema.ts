@@ -1,4 +1,5 @@
-import { pgTable, integer, varchar, date, unique, boolean, text, timestamp, numeric } from "drizzle-orm/pg-core";
+
+import { pgTable, integer, varchar, date, unique, boolean, text, timestamp, numeric, json } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const usersTable = pgTable(
@@ -76,7 +77,6 @@ export const usersTableRelations = relations(usersTable, ({ many, one }) => ({
 	userInfo: one(userInfoTable),
 	doctorSpecializations: many(doctorSpecializationsTable),
 	doctorAvailability: many(doctorAvailabilityTable),
-	runningCounters: many(runningCounterTable),
 }));
 
 
@@ -203,6 +203,9 @@ export const doctorAvailabilityTable = pgTable(
 		filledTokenCount: integer("filled_token_count").notNull().default(0),
 		consultationsDone: integer("consultations_done").notNull().default(0),
 		isStopped: boolean("is_stopped").notNull().default(false),
+	isPaused: boolean("is_paused").notNull().default(false),
+	isLeave: boolean("is_leave").notNull().default(false),
+	pauseReason: text("pause_reason"),
 	},
 	(t) => ({
 		unq_doctor_date: unique("unique_doctor_date").on(t.doctorId, t.date),
@@ -224,6 +227,7 @@ export const tokenInfoTable = pgTable(
 		userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
 		tokenDate: date("token_date").notNull(),
 		queueNum: integer("queue_num").notNull(),
+		paymentId: integer("payment_id").references(() => paymentInfoTable.id).notNull(),
 		description: varchar({ length: 1000 }),
 		createdAt: date("created_at").notNull().default("now()"),
 	},
@@ -245,26 +249,9 @@ export const tokenInfoRelations = relations(tokenInfoTable, ({ one }) => ({
 		fields: [tokenInfoTable.userId],
 		references: [usersTable.id],
 	}),
-}));
-
-export const runningCounterTable = pgTable(
-	"running_counter",
-	{
-		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		date: date("date").notNull(),
-		doctorId: integer("doctor_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
-		count: integer("count").notNull().default(0),
-		lastUpdated: date("last_updated").notNull().default("now()"),
-	},
-	(t) => ({
-		unq_date_doctor: unique("unique_date_doctor").on(t.date, t.doctorId),
-	})
-);
-
-export const runningCounterRelations = relations(runningCounterTable, ({ one }) => ({
-	doctor: one(usersTable, {
-		fields: [runningCounterTable.doctorId],
-		references: [usersTable.id],
+	payment: one(paymentInfoTable, {
+		fields: [tokenInfoTable.paymentId],
+		references: [paymentInfoTable.id],
 	}),
 }));
 
@@ -284,3 +271,19 @@ export const userInfoRelations = relations(userInfoTable, ({ one }) => ({
 		references: [usersTable.id],
 	}),
 }));
+
+
+export const paymentInfoTable = pgTable(
+	"payment_info",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		status: varchar({ length: 50 }).notNull(),
+		gateway: varchar({ length: 50 }).notNull(),
+		orderId: varchar('order_id',{ length: 500 }),
+		token: varchar({ length: 500 }),
+		merchantOrderId: varchar('merchant_order_id', { length: 255 }).notNull().unique(),
+		payload: json("payload"),
+	}
+);
+
+export const paymentInfoRelations = relations(paymentInfoTable, ({ one }) => ({}));

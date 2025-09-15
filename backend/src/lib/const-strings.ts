@@ -39,3 +39,8 @@ export const API_ENDPOINTS = {
   DOCTORS: '/doctors',
   TOKENS: '/tokens',
 };
+
+export const S3KeyPrefixes = {
+  USERS_PROFILE_PIC: 'users_profile_pic',
+  HOSPITAL_PIC: 'hospital_image',
+}

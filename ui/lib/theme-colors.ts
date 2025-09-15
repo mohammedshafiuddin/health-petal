@@ -19,8 +19,8 @@ export type colorsType = {
   };
 
 export const colors:colorsType = {
-    blue1: '#074879',
-    blue2: '#DDF0FF',
+    blue1: '#1C352D',
+    blue2: '#A6B28B',
     blue3: '#ECF4FF',
     red1: '#D84343',
     green1: '#4CAF50',

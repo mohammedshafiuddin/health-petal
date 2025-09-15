@@ -8,11 +8,19 @@ import { db } from './src/db/db_index';
 import mainRouter from './src/main-router';
 import initFunc from './src/lib/init';
 
+
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Middleware to log all request URLs
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 ((async() => {
   // Initialize the database with seed data

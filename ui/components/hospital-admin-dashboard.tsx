@@ -5,8 +5,9 @@ import MyText from '@/components/text'
 import { ThemedView } from '@/components/ThemedView'
 import { useAuth } from '@/components/context/auth-context'
 import { useHospitalAdminDashboard, Doctor } from '@/api-hooks/hospital.api'
-import { useUpdateDoctorAvailability } from '@/api-hooks/token.api'
+import { useHospitalTodaysTokens, useUpdateDoctorAvailability } from '@/api-hooks/token.api'
 import { ErrorToast, SuccessToast } from '@/services/toaster'
+import { useRouter } from 'expo-router'
 
 interface HospitalAdminDashboardProps {
   // Add any props you might need to pass to the dashboard
@@ -18,6 +19,7 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
   const [refreshing, setRefreshing] = React.useState(false);
   // State for tracking updates
   const [updatingDoctor, setUpdatingDoctor] = useState<string | null>(null);
+  const {} = useHospitalTodaysTokens();
   
   // State for optimistic UI updates
   const [optimisticDoctors, setOptimisticDoctors] = useState<Record<number, { 
@@ -32,6 +34,7 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
     error,
     refetch 
   } = useHospitalAdminDashboard(hospitalId);
+  
   
   // Setup mutation for updating availability with destructured properties
   const {
@@ -228,7 +231,7 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
     return (
       <ThemedView style={tw`flex-1 justify-center items-center`}>
         <ActivityIndicator size="large" color="#0891b2" />
-        <MyText style={tw`mt-4 text-lg`}>Loading dashboard...</MyText>
+        <MyText style={tw`mt-4 text-lg`}>Loading dashboardaa...</MyText>
       </ThemedView>
     );
   }
@@ -335,10 +338,19 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
   onAdjustConsultations,
   isUpdating,
   optimisticValues
-}) => (
+}) => {
+  const router = useRouter();
+  
+  const navigateToDoctorDetails = () => {
+    router.push(`/(drawer)/dashboard/doctor-details/${doctor.id}` as any);
+  };
+  
+  return (
   <View style={tw`bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md mb-4`}>
     <View style={tw`flex-row justify-between items-center mb-2`}>
-      <MyText style={tw`text-lg font-bold`}>{doctor.name}</MyText>
+      <TouchableOpacity onPress={navigateToDoctorDetails}>
+        <MyText style={tw`text-lg font-bold text-blue-600 dark:text-blue-400`}>{doctor.name}</MyText>
+      </TouchableOpacity>
       <View style={tw`${doctor.isAvailable ? 'bg-green-100' : 'bg-red-100'} px-3 py-1 rounded-full`}>
         <MyText style={tw`${doctor.isAvailable ? 'text-green-800' : 'text-red-800'} text-xs font-medium`}>
           {doctor.isAvailable ? 'Available' : 'Unavailable'}
@@ -414,7 +426,8 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
       <ConsultationInfo label="Fee" value={`₹${doctor.consultationFee}`} isPrice />
     </View>
   </View>
-);
+  );
+};
 
 // Consultation Info Component
 interface ConsultationInfoProps {

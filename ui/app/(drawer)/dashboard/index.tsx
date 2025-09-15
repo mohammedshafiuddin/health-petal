@@ -11,17 +11,18 @@ import useHideDrawerHeader from '@/hooks/useHideDrawerHeader'
 import HospitalAdminDashboard from '@/components/hospital-admin-dashboard'
 
 function Index() {
-    const { roles } = useRoles()
+    const roles = useRoles()
+    
     const accentColor = useThemeColor({ light: '#4f46e5', dark: '#818cf8' }, 'tint')
     
     // Use the hook to hide the drawer header if needed
-
+    
     // If roles are still loading, show a loading indicator
     if (!roles) {
         return (
             <ThemedView style={tw`flex-1 justify-center items-center`}>
                 <ActivityIndicator size="large" color={accentColor} />
-                <MyText style={tw`mt-4`}>Loading dashboard...</MyText>
+                <MyText style={tw`mt-4`}>Loading dashboardzz...</MyText>
             </ThemedView>
         )
     }

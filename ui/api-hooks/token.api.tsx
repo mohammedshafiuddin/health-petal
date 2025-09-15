@@ -1,37 +1,19 @@
 import axios from "@/services/axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-// Interfaces for token-related data
-interface DoctorAvailability {
-  id: number;
-  doctorId: number;
-  date: string;
-  totalTokenCount: number;
-  filledTokenCount: number;
-  consultationsDone: number;
-  isStopped: boolean;
-  availableTokens: number;
-}
-
-interface DoctorAvailabilityWithDate {
-  date: string;
-  availability: DoctorAvailability | null;
-}
-
-interface DoctorAvailabilityResponse {
-  message: string;
-  doctorId: number;
-  availabilities: DoctorAvailabilityWithDate[];
-}
-
-interface DoctorAvailabilityPayload {
-  doctorId: number;
-  date: string;
-  tokenCount: number;
-  isStopped?: boolean;
-  filledTokenCount?: number;
-  consultationsDone?: number;
-}
+import { 
+  DoctorAvailability, 
+  DoctorAvailabilityWithDate, 
+  DoctorAvailabilityResponse, 
+  DoctorAvailabilityPayload,
+  BookTokenPayload,
+  BookTokenResponse,
+  UpcomingToken,
+  MyTokensResponse,
+  PastToken,
+  PastTokensResponse,
+  HospitalTodaysTokensResponse,
+  DoctorTodaysTokensResponse
+} from "../../shared-types";
 
 interface SingleDoctorAvailabilityResponse {
   message: string;
@@ -145,28 +127,6 @@ export function useUpdateDoctorAvailability() {
   });
 }
 
-// Interfaces for token booking
-interface BookTokenPayload {
-  doctorId: number;
-  userId: number;
-  tokenDate: string;
-  description?: string;
-}
-
-interface BookTokenResponse {
-  message: string;
-  token: {
-    id: number;
-    doctorId: number;
-    userId: number;
-    tokenDate: string;
-    queueNum: number;
-    description: string | null;
-    status: string;
-    createdAt: string;
-  };
-}
-
 /**
  * Hook to book a token for a doctor
  */
@@ -187,5 +147,61 @@ export function useBookToken() {
       // Also invalidate the user's tokens
       queryClient.invalidateQueries({ queryKey: ['user-tokens', variables.userId] });
     }
+  });
+}
+
+/**
+ * Hook to fetch the current user's upcoming tokens
+ */
+export function useMyUpcomingTokens() {
+  return useQuery<MyTokensResponse>({
+    queryKey: ['my-upcoming-tokens'],
+    queryFn: async () => {
+      const response = await axios.get<MyTokensResponse>('/tokens/my-tokens');
+      return response.data;
+    },
+  });
+}
+
+/**
+ * Hook to fetch the current user's past tokens
+ */
+export function usePastTokens() {
+  return useQuery<PastTokensResponse>({
+    queryKey: ['my-past-tokens'],
+    queryFn: async () => {
+      const response = await axios.get<PastTokensResponse>('/tokens/my-past-tokens');
+      return response.data;
+    },
+  });
+}
+
+/**
+ * Hook to fetch today's tokens for a hospital (for hospital admin)
+ * Shows token summaries for all doctors in the hospital
+ */
+export function useHospitalTodaysTokens() {
+  return useQuery<HospitalTodaysTokensResponse>({
+    queryKey: ['hospital-todays-tokens'],
+    queryFn: async () => {
+      const response = await axios.get<HospitalTodaysTokensResponse>('/tokens/hospital-today');
+      return response.data;
+    },
+  });
+}
+
+/**
+ * Hook to fetch today's tokens for a specific doctor
+ * Shows all tokens for the doctor with detailed information
+ * @param doctorId The ID of the doctor
+ */
+export function useDoctorTodaysTokens(doctorId: number) {
+  return useQuery<DoctorTodaysTokensResponse>({
+    queryKey: ['doctor-todays-tokens', doctorId],
+    queryFn: async () => {
+      const response = await axios.get<DoctorTodaysTokensResponse>(`/tokens/doctor-today/${doctorId}`);
+      return response.data;
+    },
+    enabled: !!doctorId,
   });
 }

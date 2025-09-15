@@ -7,15 +7,17 @@ import {
   deleteHospital,
   getHospitalAdminDashboard
 } from "./hospital.controller";
+import { verifyToken } from "../middleware/auth";
+import uploadHandler from '../lib/upload-handler';
 
 const router = Router();
 
 // Hospital routes
-router.post("/", createHospital);
+router.post("/", uploadHandler.array('hospitalImages'), createHospital);
 router.get("/", getHospitals);
 
 // Hospital admin specific routes
-router.get("/admin-dashboard/:hospitalId", getHospitalAdminDashboard);
+router.get("/admin-dashboard/:hospitalId", verifyToken,getHospitalAdminDashboard);
 
 // Generic hospital routes with parameters
 router.get("/:id", getHospitalById);

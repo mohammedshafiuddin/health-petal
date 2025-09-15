@@ -1,5 +1,14 @@
 import express from 'express';
-import { bookToken, updateDoctorAvailability, getDoctorAvailabilityForNextDays } from './token.controller';
+import { 
+  bookToken, 
+  updateDoctorAvailability, 
+  getDoctorAvailabilityForNextDays, 
+  getMyUpcomingTokens, 
+  getMyPastTokens,
+  getHospitalTodaysTokens,
+  getDoctorTodaysTokens
+} from './token.controller';
+import { verifyToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -23,5 +32,33 @@ router.post('/doctor-availability', updateDoctorAvailability);
  * @access  Public
  */
 router.get('/doctor-availability/next-days', getDoctorAvailabilityForNextDays);
+
+/**
+ * @route   GET /api/token/my-tokens
+ * @desc    Get current user's upcoming tokens
+ * @access  Private - Requires authentication
+ */
+router.get('/my-tokens', verifyToken, getMyUpcomingTokens);
+
+/**
+ * @route   GET /api/token/my-past-tokens
+ * @desc    Get current user's past tokens
+ * @access  Private - Requires authentication
+ */
+router.get('/my-past-tokens', verifyToken, getMyPastTokens);
+
+/**
+ * @route   GET /api/token/hospital-today
+ * @desc    Get today's tokens for all doctors in a hospital (hospital admin view)
+ * @access  Private - Requires authentication (hospital admin only)
+ */
+router.get('/hospital-today', verifyToken, getHospitalTodaysTokens);
+
+/**
+ * @route   GET /api/token/doctor-today/:doctorId
+ * @desc    Get today's tokens for a specific doctor
+ * @access  Private - Requires authentication
+ */
+router.get('/doctor-today/:doctorId', verifyToken, getDoctorTodaysTokens);
 
 export default router;

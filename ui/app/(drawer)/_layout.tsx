@@ -24,7 +24,7 @@ import {
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {IconButton } from "react-native-paper";
 import { colors } from "@/lib/theme-colors";
 import tw from "../tailwind";
@@ -47,12 +47,14 @@ function _layout(props: Props) {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
 
-  const { roles, refreshRoles } = useRoles();
+  const roles = useRoles();
   const isAdmin = roles?.includes("admin");
+  const isGenUser = roles?.includes(ROLE_NAMES.GENERAL_USER);
+  const isHospitalAdmin = roles?.includes(ROLE_NAMES.HOSPITAL_ADMIN);
   const router = useRouter();
 
   useEffect(() => {
-    refreshRoles();
+    // refreshRoles();
   }, []);
 
   const spinAnim = React.useRef(new Animated.Value(0)).current;
@@ -69,13 +71,13 @@ function _layout(props: Props) {
     // }).start(() => {
     //   spinAnim.setValue(0);
     //   setSpinning(false);
-    //   queryClient.clear();
-    //   queryClient.removeQueries();
-    //   queryClient.resetQueries({
-    //     exact: false,
-    //     type: "all",
-    //   });
-    //   setCount((val) => val + 1);
+      queryClient.clear();
+      queryClient.removeQueries();
+      queryClient.resetQueries({
+        exact: false,
+        type: "all",
+      });
+      // setCount((val) => val + 1);
     //   emitRefreshEvent();
     // });
   };
@@ -119,6 +121,14 @@ function _layout(props: Props) {
           }}
         >
           <Drawer.Screen
+            name="index"
+            options={{
+              title: "Home",
+              headerShown: false,
+              drawerItemStyle: { height: 0 },
+            }}
+            />
+          <Drawer.Screen
             name="dashboard"
             options={{
               title: "Dashboard",
@@ -133,6 +143,68 @@ function _layout(props: Props) {
                 <MaterialCommunityIcons
                   color={focused ? theme.colors.blue1 : theme.colors.gray1}
                   name="view-dashboard-outline"
+                  size={24}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="my-tokens"
+            options={{
+              title: "My Tokens",
+              headerShown: true,
+              drawerIcon: ({
+                color,
+                focused,
+              }: {
+                focused: boolean;
+                color: string;
+              }) => (
+                <MaterialCommunityIcons
+                  color={focused ? theme.colors.blue1 : theme.colors.gray1}
+                  name="ticket-outline"
+                  size={24}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="my-hospital"
+            options={{
+              title: "My Hospital",
+              headerShown: true,
+              drawerItemStyle: isHospitalAdmin ? {} : { display: "none" },
+              drawerIcon: ({
+                color,
+                focused,
+              }: {
+                focused: boolean;
+                color: string;
+              }) => (
+                <MaterialCommunityIcons
+                  color={focused ? theme.colors.blue1 : theme.colors.gray1}
+                  name="hospital-building"
+                  size={24}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="todays-tokens"
+            options={{
+              title: "Today's Tokens",
+              headerShown: true,
+              drawerItemStyle: isHospitalAdmin ? {} : { display: "none" },
+              drawerIcon: ({
+                color,
+                focused,
+              }: {
+                focused: boolean;
+                color: string;
+              }) => (
+                <MaterialCommunityIcons
+                  color={focused ? theme.colors.blue1 : theme.colors.gray1}
+                  name="calendar-clock"
                   size={24}
                 />
               ),
@@ -219,54 +291,7 @@ function _layout(props: Props) {
               ),
             }}
           /> */}
-          {/* <Drawer.Screen
-            name="home"
-            options={{
-              title: "Home",
-              headerShown: true,
-            }}
-          />
 
-          <Drawer.Screen
-            name="admin-connect"
-            options={{
-              title: "Admin Connect",
-              headerShown: true,
-              drawerIcon: ({
-                color,
-                focused,
-              }: {
-                focused: boolean;
-                color: string;
-              }) => (
-                <MaterialIcons
-                //   color={focused ? theme.colors.blue1 : theme.colors.gray1}
-                  name="support-agent"
-                  size={24}
-                />
-              ),
-            }}
-          /> */}
-          {/* <Drawer.Screen
-            name="announcements"
-            options={{
-              title: "Announcements",
-              headerShown: true,
-              drawerIcon: ({
-                color,
-                focused,
-              }: {
-                focused: boolean;
-                color: string;
-              }) => (
-                <Ionicons
-                //   color={focused ? theme.colors.blue1 : theme.colors.gray1}
-                  name="megaphone-outline"
-                  size={24}
-                />
-              ),
-            }}
-          /> */}
           <Drawer.Screen
             name="admin-panel"
             options={{
@@ -288,87 +313,9 @@ function _layout(props: Props) {
               ),
             }}
           />
-          {/* <Drawer.Screen
-            name="profile"
-            options={{
-              title: "My Profile",
-              headerShown: true,
-              drawerIcon: ({
-                color,
-                focused,
-              }: {
-                focused: boolean;
-                color: string;
-              }) => (
-                <Ionicons
-                //   color={focused ? theme.colors.blue1 : theme.colors.gray1}
-                  name="person-outline"
-                  size={24}
-                />
-              ),
-            }}
-          /> */}
-          {/* <Drawer.Screen
-            name="users"
-            options={{
-              title: "Users",
-              drawerItemStyle: { display: "none" },
-              drawerIcon: ({
-                color,
-                focused,
-              }: {
-                focused: boolean;
-                color: string;
-              }) => (
-                <Ionicons
-                //   color={focused ? theme.colors.blue1 : theme.colors.gray1}
-                  name="people-outline"
-                  size={24}
-                />
-              ),
-            }}
-          /> */}
-          {/* <Drawer.Screen
-            name="notifications"
-            options={{
-              title: "Notifications",
-              headerShown: true,
-              drawerIcon: ({
-                color,
-                focused,
-              }: {
-                focused: boolean;
-                color: string;
-              }) => (
-                <Ionicons
-                //   color={focused ? theme.colors.blue1 : theme.colors.gray1}
-                  name="notifications-outline"
-                  size={24}
-                />
-              ),
-            }}
-          /> */}
-          {/* <Drawer.Screen
-            name="not-found"
-            options={{
-              title: "Not Found",
-              headerShown: true,
-              drawerItemStyle: { display: "none" },
-              drawerIcon: ({
-                color,
-                focused,
-              }: {
-                focused: boolean;
-                color: string;
-              }) => (
-                <Ionicons
-                //   color={focused ? theme.colors.blue1 : theme.colors.gray1}
-                  name="warning-outline"
-                  size={24}
-                />
-              ),
-            }}
-          /> */}
+
+
+
         </Drawer>
     </View>
   );
@@ -378,22 +325,46 @@ export default _layout;
 
 function CustomDrawerContent(props: any) {
   const { theme } = useTheme();
-  const userId = useCurrentUserId();
-  const { data: user } = useGetUserById(userId || undefined);
+  // const {userId} = useCurrentUserId();
+  const { userId } = useAuth();
+  const { data: user, refetch: refetchUserDetails } = useGetUserById(userId);
+  
+  
   const router = useRouter();
   
-  const isHospitalAdmin = useRoles().roles?.includes(ROLE_NAMES.HOSPITAL_ADMIN);
-  const isDoctorSecretary = useRoles().roles?.includes(ROLE_NAMES.DOCTOR_SECRETARY);
+  const isHospitalAdmin = useRoles()?.includes(ROLE_NAMES.HOSPITAL_ADMIN);
+  const isDoctorSecretary = useRoles()?.includes(ROLE_NAMES.DOCTOR_SECRETARY);
+  const isGenUser = useRoles()?.includes(ROLE_NAMES.GENERAL_USER);
   const shouldFetchMyDoctors = Boolean(isHospitalAdmin) || Boolean(isDoctorSecretary);
+  
   const { data: myDoctors } = useGetMyDoctors({
     enabled: shouldFetchMyDoctors,
   });
 
-  const hiddenRoutes = ["users", "home", "notifications", "not-found", 'login', 'signup'];
+  const hiddenRoutes = ["users", "home", "notifications", "not-found", 'login', 'signup',
+    'payment-successful', 'payment-failed'
+  ];
   const adminOnlyRoutes = ["admin-panel"];
-  const { logout } = useAuth();
-  const { roles, refreshRoles } = useRoles();
+  const genUserOnlyRoutes = ["my-tokens"];
+  const hostpitalAdminOnlyRoutes = ["my-hospital", "todays-tokens"];
+  const { logout, refreshRoles } = useAuth();
+  const  roles = useRoles();
   const isAdmin = roles?.includes("admin");
+
+  useFocusEffect(React.useCallback(() => {
+    
+    if(Boolean(userId)) {
+      refetchUserDetails();
+      refreshRoles();
+    }
+  }, []));
+
+  
+  React.useEffect(() => {
+    refetchUserDetails();
+  },[userId]);
+
+  
   return (
     <View style={{ flex: 1 }}>
       <DrawerContentScrollView
@@ -457,7 +428,9 @@ function CustomDrawerContent(props: any) {
           const isFocused = props.state.index === index;
           if (
             hiddenRoutes.includes(route.name) ||
-            (!isAdmin && adminOnlyRoutes.includes(route.name))
+            (!isAdmin && adminOnlyRoutes.includes(route.name)) ||
+            (genUserOnlyRoutes.includes(route.name) && !isGenUser) ||
+            (hostpitalAdminOnlyRoutes.includes(route.name) && !isHospitalAdmin)
           ) {
             return null;
           }

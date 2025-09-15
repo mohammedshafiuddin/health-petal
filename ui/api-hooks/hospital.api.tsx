@@ -13,6 +13,8 @@ export interface CreateHospitalPayload {
 // Update hospital payload interface
 export interface UpdateHospitalPayload extends CreateHospitalPayload {
   id: number;
+  doctorsToAdd?: number[];
+  doctorsToRemove?: number[];
 }
 
 // Hospital response interfaces
@@ -85,6 +87,7 @@ export function useUpdateHospital() {
   
   return useMutation<UpdateHospitalResponse, Error, UpdateHospitalPayload>({
     mutationFn: async ({ id, ...hospitalPayload }: UpdateHospitalPayload) => {
+      
       const response = await axios.put<UpdateHospitalResponse>(`/hospitals/${id}`, hospitalPayload);
       return response.data;
     },
@@ -153,6 +156,7 @@ export interface Doctor {
 export interface HospitalAdminDashboardData {
   hospital: Hospital;
   doctors: Doctor[];
+  admins: PotentialHospitalAdmin[];
   currentDate: string;
   totalDoctors: number;
   totalAppointmentsToday: number;

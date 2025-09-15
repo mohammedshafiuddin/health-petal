@@ -5,14 +5,32 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { getJWT, deleteJWT } from "../../hooks/useJWT";
-import { usePathname, useRouter } from "expo-router";
+import {
+  getJWT,
+  deleteJWT,
+  getRoles,
+  saveJWT,
+  saveRoles,
+  saveUserId,
+  getUserId,
+} from "../../hooks/useJWT";
+import { useFocusEffect, usePathname, useRouter } from "expo-router";
 import queryClient from "@/utils/queryClient";
 import { DeviceEventEmitter } from "react-native";
 import { FORCE_LOGOUT_EVENT, SESSION_EXPIRED_MSG } from "@/lib/const-strs";
-import { useLogout } from "@/api-hooks/auth.api";
-import { useUserResponsibilities, UserResponsibilities } from "@/api-hooks/user.api";
+import { useLogin, useLogout } from "@/api-hooks/auth.api";
+import {
+  useUserResponsibilities,
+  UserResponsibilities,
+} from "@/api-hooks/user.api";
 import { InfoToast, SuccessToast } from "@/services/toaster";
+import { StorageService } from "@/lib/StorageService";
+
+interface LoginFormInputs {
+  login: string;
+  password: string;
+  useUsername?: boolean;
+}
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -26,54 +44,66 @@ interface AuthContextType {
   responsibilitiesLoading: boolean;
   responsibilitiesError: Error | null;
   refreshResponsibilities: () => void;
+  roles: string[] | null;
+  setRoles: (roles: string[] | null) => void;
+  refreshRoles: () => Promise<void>;
+  loginFunc: (payload: LoginFormInputs) => Promise<void>;
+  userId: number | null;
 }
 
 const defaultResponsibilities: UserResponsibilities = {
   hospitalAdminFor: null,
-  secretaryFor: []
+  secretaryFor: [],
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const { mutate: loginApi, isPending: isLoggingIn } = useLogin();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [roles, setRoles] = useState<string[] | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
+
+  const refreshRoles = async () => {
+    const r = await getRoles();
+    setRoles(r);
+  };
+
+  useEffect(() => {
+    refreshRoles();
+  }, []);
   const { mutate: logoutApi } = useLogout();
   const router = useRouter();
-  const [responsibilitiesError, setResponsibilitiesError] = useState<Error | null>(null);
-  
+  const [responsibilitiesError, setResponsibilitiesError] =
+    useState<Error | null>(null);
+
   const {
     data: responsibilities,
     isLoading: responsibilitiesLoading,
     refetch: refetchResponsibilities,
-    error: queryError
+    error: queryError,
   } = useUserResponsibilities();
 
-  
-
-  useEffect(() => {
+  React.useEffect(() => {
     (async () => {
       const token = await getJWT();
-      
+
       setIsLoggedIn(!!token);
       if (!token) {
-        router.replace("/(drawer)/login" as any);
+        if (!pathname.includes("login")) {
+          router.replace("/(drawer)/login" as any);
+        }
       } else {
-        console.log('refreshing responsibilities');
-        
-        // Fetch responsibilities when logged in
         refetchResponsibilities();
+        router.replace("/(drawer)/dashboard");
+        const userId = await getUserId();
+        setUserId(userId ? parseInt(userId) : null);
       }
     })();
   }, []);
 
-  // Update error state when query error changes
-  useEffect(() => {
-    if (queryError) {
-      setResponsibilitiesError(queryError as Error);
-    }
-  }, [queryError]);
-
-  
   const pathname = usePathname();
 
   const refreshResponsibilities = () => {
@@ -88,31 +118,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isSessionExpired?: boolean;
   }) => {
 
-    if(!isSessionExpired) {
+    const pageConditon =
+      pathname.includes("/login") ||
+      pathname.includes("/signup") ||
+      pathname === "/";
 
+    if (!isSessionExpired) {
       logoutApi({} as any, {
         onSuccess: () => {},
         onSettled: () => {
           deleteJWT();
           setIsLoggedIn(false);
-          
-          router.replace({
-            pathname: "/(drawer)/login" as any,
-            params: isSessionExpired ? { message: SESSION_EXPIRED_MSG } : {},
-          });
+
+          if (!pageConditon) {
+            router.replace({
+              pathname: "/(drawer)/login" as any,
+              params: isSessionExpired ? { message: SESSION_EXPIRED_MSG } : {},
+            });
+          }
         },
       });
-    }
-    else {
+    } else {
       deleteJWT();
       setIsLoggedIn(false);
       InfoToast("Session expired. Please log in again.");
-      router.replace({
-        pathname: "/login" as any,
-        params: { message: SESSION_EXPIRED_MSG },
-      });
+      if (!pageConditon) {
+        router.replace({
+          pathname: "/login" as any,
+          params: { message: SESSION_EXPIRED_MSG },
+        });
+      }
     }
     queryClient.clear();
+  };
+
+  const loginFunc = async (data: LoginFormInputs) => {
+    loginApi(data, {
+      onSuccess: async (result) => {
+
+        // refetchUserId();
+        // await refetchUserData();
+
+        await saveUserId(result.user.id.toString());
+        setUserId(result.user.id);
+
+        await saveJWT(result.token);
+
+        // Update login state in auth context
+        setIsLoggedIn(true);
+
+        // Handle roles if available
+        if (result.user.roles) {
+          await saveRoles(result.user.roles);
+          await refreshRoles();
+        }
+
+        // refetchResponsibilities();
+
+        // Clear the 'message' search param from the URL after login
+        router.replace({
+          pathname: "/(drawer)/dashboard",
+          params: {},
+        });
+      },
+      onError: (e: any) => {
+        // setError("login", {
+        //   type: "manual",
+        //   message: e.message || "Login failed",
+        // });
+      },
+    });
   };
 
   React.useEffect(() => {
@@ -129,15 +204,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      isLoggedIn, 
-      setIsLoggedIn,
-      logout,
-      responsibilities: responsibilities || defaultResponsibilities,
-      responsibilitiesLoading,
-      responsibilitiesError,
-      refreshResponsibilities
-    }}>
+    <AuthContext.Provider
+      value={{
+        isLoggedIn,
+        setIsLoggedIn,
+        logout,
+        responsibilities: responsibilities || defaultResponsibilities,
+        responsibilitiesLoading,
+        responsibilitiesError,
+        refreshResponsibilities,
+        roles,
+        setRoles,
+        refreshRoles,
+        loginFunc,
+        userId,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -156,14 +238,14 @@ export const useAuth = () => {
  * @param hospitalId Hospital ID to check against
  * @returns Boolean indicating if user is admin for that hospital
  */
-export const useIsHospitalAdmin = (hospitalId?: number): boolean => {
+export const useIsHospitalAdmin = (hospitalId?: number | string): boolean => {
   const { responsibilities } = useAuth();
-  
+
   // If no hospitalId provided, return false
   if (hospitalId === undefined) {
     return false;
   }
-  
+
   // Check if user is admin for the specified hospital
   return responsibilities?.hospitalAdminFor === hospitalId;
 };
@@ -175,12 +257,12 @@ export const useIsHospitalAdmin = (hospitalId?: number): boolean => {
  */
 export const useIsDoctorSecretary = (doctorId?: number): boolean => {
   const { responsibilities } = useAuth();
-  
+
   // If no doctorId provided, return false
   if (doctorId === undefined) {
     return false;
   }
-  
+
   // Check if user is a secretary for the specified doctor
   return responsibilities?.secretaryFor?.includes(doctorId) || false;
 };

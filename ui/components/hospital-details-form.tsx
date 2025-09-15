@@ -9,7 +9,8 @@ import MyButton from '@/components/button';
 import CustomDropdown, { DropdownOption } from '@/components/dropdown';
 import { useRoles } from '@/components/context/roles-context';
 import { useGetPotentialHospitalAdmins, PotentialHospitalAdmin } from '@/api-hooks/hospital.api';
-import { useGetUnassignedDoctors, useAddDoctorsToHospital, useRemoveDoctorFromHospital, Doctor } from '@/api-hooks/doctor.api';
+import { useGetUnassignedDoctors, useAddDoctorsToHospital, useRemoveDoctorFromHospital } from '@/api-hooks/doctor.api';
+import { Doctor } from 'shared-types';
 import MultiSelectDropdown from '@/components/multi-select';
 
 // Define validation schema using Yup
@@ -51,11 +52,10 @@ function HospitalDetailsForm({
   submitButtonText = 'Add Hospital',
   isEdit = false
 }: HospitalDetailsFormProps) {
-  const { roles } = useRoles();
+  const roles = useRoles();
   const isAdmin = roles?.includes('admin');
   const { data: potentialAdmins, isLoading: isLoadingAdmins } = useGetPotentialHospitalAdmins();
   const { data: unassignedDoctors, isLoading: isLoadingDoctors } = useGetUnassignedDoctors();
-  console.log({unassignedDoctors})
   
   const addDoctorsMutation = useAddDoctorsToHospital();
   const removeDoctorMutation = useRemoveDoctorFromHospital();

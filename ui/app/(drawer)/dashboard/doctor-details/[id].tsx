@@ -1,39 +1,44 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import tw from '@/app/tailwind';
-import DoctorDetails from '@/components/doctor-details';
 import { ThemedView } from '@/components/ThemedView';
 import MyText from '@/components/text';
-import MyButton from '@/components/button';
 import { useRouter } from 'expo-router';
 import useHideDrawerHeader from '@/hooks/useHideDrawerHeader';
+import { useRoles } from '@/components/context/roles-context';
+import { ROLE_NAMES } from '@/lib/constants';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { useIsHospitalAdmin } from '@/components/context/auth-context';
+import UserDetailsAdminPov from '@/components/user-details-admin-pov';
+import UserDetailsUserPov from '@/components/user-details-user-pov';
 
 export default function DoctorDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const doctorId = parseInt(id as string);
   const router = useRouter();
   useHideDrawerHeader();
+  const roles = useRoles();
+  const accentColor = useThemeColor({ light: '#4f46e5', dark: '#818cf8' }, 'tint');
   
-  if (isNaN(doctorId)) {
+  // Check for admin privileges
+  const isAdmin = roles?.includes(ROLE_NAMES.ADMIN);
+  const isHospitalAdmin = roles?.includes(ROLE_NAMES.HOSPITAL_ADMIN);
+  
+  // If roles are still loading, show a loading indicator
+  if (!roles) {
     return (
-      <ThemedView style={tw`flex-1 p-4 justify-center items-center`}>
-        <MyText style={tw`text-red-500 text-lg text-center mb-4`}>Invalid doctor ID</MyText>
-        <MyButton
-          onPress={() => router.back()}
-          textContent="Go Back"
-        />
+      <ThemedView style={tw`flex-1 justify-center items-center`}>
+        <ActivityIndicator size="large" color={accentColor} />
+        <MyText style={tw`mt-4`}>Loading...</MyText>
       </ThemedView>
     );
   }
 
-  return (
-    <ScrollView style={tw`flex-1`} contentContainerStyle={tw`p-4`}>
-      <DoctorDetails 
-        doctorId={doctorId}
-        showFullDetails={true}
-        isAdmin={true}
-      />
-    </ScrollView>
-  );
+  // Determine which component to render based on user role
+  if (isAdmin || isHospitalAdmin) {
+    return <UserDetailsAdminPov doctorId={doctorId} />;
+  } else {
+    return <UserDetailsUserPov doctorId={doctorId} />;
+  }
 }

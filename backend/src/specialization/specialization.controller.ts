@@ -8,7 +8,6 @@ import { specializationsTable } from "../db/schema.js";
 export const getAllSpecializations = async (_req: Request, res: Response) => {
     try {
 
-        console.log("Fetching specializations...")
         const specializations = await db.select().from(specializationsTable);
         
         return res.status(200).json(specializations);

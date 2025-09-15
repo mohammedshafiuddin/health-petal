@@ -1,17 +1,29 @@
 import MyText from "@/components/text";
+import { Image, TouchableOpacity } from "react-native";
+import usePickImage from "@/hooks/usePickImage";
 import MyButton from "@/components/button";
 import MyTextInput from "@/components/textinput";
 import React, { useEffect } from "react";
-import { View, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import {
+  View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
 import CustomDropdown from "@/components/dropdown";
 import MultiSelectDropdown from "@/components/multi-select";
 import tw from "@/app/tailwind";
 import { useRouter } from "expo-router";
 import { Formik } from "formik";
 import * as Yup from "yup";
-import { useCreateBusinessUser, useUpdateBusinessUser } from "@/api-hooks/user.api";
+import {
+  useCreateBusinessUser,
+  useUpdateBusinessUser,
+} from "@/api-hooks/user.api";
 import { useSpecializations } from "@/api-hooks/common.api";
 import { ROLE_NAMES, BUSINESS_ROLE_OPTIONS } from "@/lib/constants";
+import { useGetHospitals } from "@/api-hooks/hospital.api";
 
 // Define validation schema using Yup
 const getBusinessUserSchema = (isEditing: boolean) => {
@@ -35,7 +47,7 @@ const getBusinessUserSchema = (isEditing: boolean) => {
     }),
     consultationFee: Yup.number().when("role", {
       is: ROLE_NAMES.DOCTOR,
-      then: (schema) => 
+      then: (schema) =>
         schema
           .required("Consultation fee is required")
           .min(0, "Consultation fee must be a positive number"),
@@ -43,13 +55,19 @@ const getBusinessUserSchema = (isEditing: boolean) => {
     }),
     dailyTokenCount: Yup.number().when("role", {
       is: ROLE_NAMES.DOCTOR,
-      then: (schema) => 
+      then: (schema) =>
         schema
           .required("Daily token count is required")
           .integer("Token count must be a whole number")
           .min(0, "Token count must be a positive number"),
       otherwise: (schema) => schema.optional(),
     }),
+    hospitalId: Yup.number().optional(),
+    // hospitalId: Yup.number().when("role", {
+    //   is: ROLE_NAMES.DOCTOR,
+    //   then: (schema) => schema.optional(),
+    //   otherwise: (schema) => schema.optional(),
+    // }),
   };
 
   // Add validation fields for creation only
@@ -75,9 +93,10 @@ const getBusinessUserSchema = (isEditing: boolean) => {
     password: Yup.string().optional(),
     confirmPassword: Yup.string().when("password", {
       is: (val: string) => val && val.length > 0,
-      then: (schema) => schema
-        .required("Confirm password is required")
-        .oneOf([Yup.ref("password")], "Passwords must match"),
+      then: (schema) =>
+        schema
+          .required("Confirm password is required")
+          .oneOf([Yup.ref("password")], "Passwords must match"),
       otherwise: (schema) => schema.optional(),
     }),
   });
@@ -91,9 +110,12 @@ const getInitialValues = (userData?: any) => {
     password: "",
     confirmPassword: "",
     role: userData?.role || ROLE_NAMES.HOSPITAL_ADMIN,
-    specializations: userData?.specializationIds ? userData.specializationIds.join(",") : "",
+    specializations: userData?.specializationIds
+      ? userData.specializationIds.join(",")
+      : "",
     consultationFee: userData?.consultationFee || "",
     dailyTokenCount: userData?.dailyTokenCount || "",
+    hospitalId: userData?.hospitalId || "",
   };
 };
 
@@ -106,12 +128,33 @@ interface AddBusinessUserFormProps {
   isEditing?: boolean;
 }
 
-function AddBusinessUserForm({ onSuccess, userData, isEditing = false }: AddBusinessUserFormProps) {
+function AddBusinessUserForm({
+  onSuccess,
+  userData,
+  isEditing = false,
+}: AddBusinessUserFormProps) {
   const router = useRouter();
   const createBusinessUserMutation = useCreateBusinessUser();
-  const updateBusinessUserMutation = userData?.id ? useUpdateBusinessUser(userData.id) : null;
+  const updateBusinessUserMutation = userData?.id
+    ? useUpdateBusinessUser(userData.id)
+    : null;
   const { data: specializationsList, isLoading: isLoadingSpecializations } =
     useSpecializations();
+  const { data: hospitals, isLoading: isLoadingHospitals } = useGetHospitals();
+
+  const hospitalOptions =
+    hospitals?.hospitals.map((hospital) => ({
+      label: hospital.name,
+      value: hospital.id,
+    })) || [];
+
+  const [profilePic, setProfilePic] = React.useState<{ uri?: string } | null>(
+    null
+  );
+  const handleProfilePicUpload = usePickImage({
+    setFile: setProfilePic,
+    multiple: false,
+  });
 
   const initialValues = getInitialValues(userData);
   const validationSchema = getBusinessUserSchema(isEditing);
@@ -133,23 +176,43 @@ function AddBusinessUserForm({ onSuccess, userData, isEditing = false }: AddBusi
                   .map((id: string) => parseInt(id)),
                 consultationFee: parseFloat(values.consultationFee),
                 dailyTokenCount: parseInt(values.dailyTokenCount),
+                hospitalId: values.hospitalId,
               }
             : {}),
         };
 
-        await updateBusinessUserMutation!.mutateAsync(updatePayload);
-        Alert.alert("Success", "Business user updated successfully!", [
-          {
-            text: "OK",
-            onPress: () => {
-              if (onSuccess) {
-                onSuccess();
-              } else {
-                router.push("/(drawer)/admin-panel/manage-business-users");
-              }
-            },
+        const formData = new FormData();
+        Object.entries(updatePayload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, value as string);
+          }
+        });
+
+        // Attach profilePic property if present
+        if (profilePic) {
+          formData.append("profilePic", {
+            uri: profilePic.uri,
+            name: "profile.jpg",
+            type: "image/jpeg",
+          } as any);
+        }
+
+        updateBusinessUserMutation!.mutate(formData, {
+          onSuccess: () => {
+            Alert.alert("Success", "Business user updated successfully!", [
+              {
+                text: "OK",
+                onPress: () => {
+                  if (onSuccess) {
+                    onSuccess();
+                  } else {
+                    router.push("/(drawer)/admin-panel/manage-business-users");
+                  }
+                },
+              },
+            ]);
           },
-        ]);
+        });
       } else {
         // Create new user
         const userPayload = {
@@ -157,6 +220,7 @@ function AddBusinessUserForm({ onSuccess, userData, isEditing = false }: AddBusi
           username: values.username,
           password: values.password,
           role: values.role,
+          hospitalId: Number(values.hospitalId),
           ...(values.role === ROLE_NAMES.DOCTOR && values.specializations
             ? {
                 specializationIds: values.specializations
@@ -168,24 +232,46 @@ function AddBusinessUserForm({ onSuccess, userData, isEditing = false }: AddBusi
             : {}),
         };
 
-        await createBusinessUserMutation.mutateAsync(userPayload);
-        Alert.alert("Success", "Business user added successfully!", [
-          {
-            text: "OK",
-            onPress: () => {
-              if (onSuccess) {
-                onSuccess();
-              } else {
-                router.push("/(drawer)/admin-panel/manage-business-users");
-              }
-            },
+        const formData = new FormData();
+        Object.entries(userPayload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, value as string);
+          }
+        });
+
+        // Attach profilePic property if present
+        if (profilePic && profilePic.uri) {
+          formData.append("profilePic", {
+            uri: profilePic.uri,
+            name: "profile.jpg",
+            type: "image/jpeg",
+          } as any);
+        }
+
+        await createBusinessUserMutation.mutateAsync(formData, {
+          onSuccess: () => {
+            Alert.alert("Success", "Business user added successfully!", [
+              {
+                text: "OK",
+                onPress: () => {
+                  if (onSuccess) {
+                    onSuccess();
+                  } else {
+                    router.push("/(drawer)/admin-panel/manage-business-users");
+                  }
+                },
+              },
+            ]);
           },
-        ]);
+        });
       }
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error.message || `Failed to ${isEditing ? 'update' : 'add'} business user. Please try again.`,
+        error.message ||
+          `Failed to ${
+            isEditing ? "update" : "add"
+          } business user. Please try again.`,
         [{ text: "OK" }]
       );
     } finally {
@@ -193,13 +279,14 @@ function AddBusinessUserForm({ onSuccess, userData, isEditing = false }: AddBusi
     }
   };
 
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={tw`flex-1`}
       keyboardVerticalOffset={100}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={tw`flex-grow p-2`}
         showsVerticalScrollIndicator={false}
       >
@@ -207,209 +294,285 @@ function AddBusinessUserForm({ onSuccess, userData, isEditing = false }: AddBusi
           <Formik
             initialValues={initialValues}
             validationSchema={validationSchema}
-        onSubmit={handleSubmit}
-        enableReinitialize
-      >
-        {({
-          handleChange,
-          handleBlur,
-          handleSubmit,
-          values,
-          errors,
-          touched,
-          isSubmitting,
-          setFieldValue,
-        }) => (
-          <View>
-            <View style={tw`mb-4`}>
-              <MyTextInput
-                topLabel="Full Name"
-                placeholder="Enter user's full name"
-                value={values.name}
-                onChangeText={handleChange("name")}
-                onBlur={handleBlur("name")}
-                style={tw`mb-2`}
-              />
-              {touched.name && errors.name && (
-                <MyText style={tw`text-red-500 text-xs mt-1`}>
-                  {String(errors.name)}
-                </MyText>
-              )}
-            </View>
-
-            <View style={tw`mb-4`}>
-              <MyTextInput
-                topLabel="Username"
-                placeholder="Enter username"
-                value={values.username}
-                onChangeText={handleChange("username")}
-                onBlur={handleBlur("username")}
-                style={tw`mb-2`}
-                autoCapitalize="none"
-                editable={!isEditing} // Username can't be edited
-              />
-              {touched.username && errors.username && (
-                <MyText style={tw`text-red-500 text-xs mt-1`}>
-                  {String(errors.username)}
-                </MyText>
-              )}
-            </View>
-
-            <View style={tw`mb-4`}>
-              <MyTextInput
-                topLabel={isEditing ? "New Password (leave blank to keep current)" : "Password"}
-                placeholder={isEditing ? "Enter new password" : "Enter password"}
-                value={values.password}
-                onChangeText={handleChange("password")}
-                onBlur={handleBlur("password")}
-                style={tw`mb-2`}
-                secureTextEntry
-              />
-              {touched.password && errors.password && (
-                <MyText style={tw`text-red-500 text-xs mt-1`}>
-                  {String(errors.password)}
-                </MyText>
-              )}
-            </View>
-
-            <View style={tw`mb-4`}>
-              <MyTextInput
-                topLabel={isEditing ? "Confirm New Password" : "Confirm Password"}
-                placeholder="Confirm password"
-                value={values.confirmPassword}
-                onChangeText={handleChange("confirmPassword")}
-                onBlur={handleBlur("confirmPassword")}
-                style={tw`mb-2`}
-                secureTextEntry
-              />
-              {touched.confirmPassword && errors.confirmPassword && (
-                <MyText style={tw`text-red-500 text-xs mt-1`}>
-                  {String(errors.confirmPassword)}
-                </MyText>
-              )}
-            </View>
-
-            <View style={tw`mb-4`}>
-              <CustomDropdown
-                label="Role"
-                value={values.role}
-                options={roles}
-                onValueChange={(value: string | number) => {
-                  setFieldValue("role", value);
-                  if (value !== ROLE_NAMES.DOCTOR) {
-                    setFieldValue("specializations", "");
-                  }
-                }}
-                error={touched.role && !!errors.role}
-                style={tw`relative`}
-                disabled={isEditing} // Role can't be changed when editing
-              />
-              {touched.role && errors.role && (
-                <MyText style={tw`text-red-500 text-xs mt-1`}>
-                  {String(errors.role)}
-                </MyText>
-              )}
-            </View>
-
-            {values.role === ROLE_NAMES.DOCTOR && (
-              <View style={tw`mb-4`}>
-                <MultiSelectDropdown
-                  placeholder="Select Specializations"
-                  value={
-                    values.specializations
-                      ? values.specializations.split(",")
-                      : []
-                  }
-                  data={
-                    specializationsList?.map((spec) => ({
-                      label: spec.name,
-                      value: spec.id.toString(),
-                    })) || []
-                  }
-                  onChange={(vals: string[]) =>
-                    setFieldValue(
-                      "specializations",
-                      Array.isArray(vals) ? vals.join(",") : ""
-                    )
-                  }
-                  style={tw`relative`}
-                  disabled={isLoadingSpecializations}
-                  dropdownStyle={{
-                    borderWidth: 2,
-                    borderColor:
-                      touched.specializations && errors.specializations
-                        ? "#ef4444"
-                        : "#d1d5db",
-                  }}
-                />
-                {touched.specializations && errors.specializations && (
-                  <MyText style={tw`text-red-500 text-xs mt-1`}>
-                    {String(errors.specializations)}
-                  </MyText>
-                )}
-                {isLoadingSpecializations && (
-                  <MyText style={tw`text-gray-500 text-xs mt-1`}>
-                    Loading specializations...
-                  </MyText>
-                )}
-                
-                <View style={tw`mt-4`}>
+            onSubmit={handleSubmit}
+            enableReinitialize
+          >
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              values,
+              errors,
+              touched,
+              isSubmitting,
+              setFieldValue,
+            }) => (
+              <View>
+                {/* Profile Pic Field */}
+                <TouchableOpacity
+                  onPress={handleProfilePicUpload}
+                  activeOpacity={0.7}
+                  style={{ alignSelf: "center", marginBottom: 8 }}
+                >
+                  {profilePic && profilePic.uri ? (
+                    <Image
+                      source={{ uri: profilePic.uri }}
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        marginBottom: 8,
+                        backgroundColor: "#eee",
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        backgroundColor: "#eee",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <MyText>Pick</MyText>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <View style={tw`mb-4`}>
                   <MyTextInput
-                    topLabel="Consultation Fee"
-                    placeholder="Enter consultation fee"
-                    value={values.consultationFee.toString()}
-                    onChangeText={handleChange("consultationFee")}
-                    onBlur={handleBlur("consultationFee")}
+                    topLabel="Full Name"
+                    placeholder="Enter user's full name"
+                    value={values.name}
+                    onChangeText={handleChange("name")}
+                    onBlur={handleBlur("name")}
                     style={tw`mb-2`}
-                    keyboardType="numeric"
                   />
-                  {touched.consultationFee && errors.consultationFee && (
+                  {touched.name && errors.name && (
                     <MyText style={tw`text-red-500 text-xs mt-1`}>
-                      {String(errors.consultationFee)}
+                      {String(errors.name)}
                     </MyText>
                   )}
                 </View>
 
-                <View style={tw`mt-4`}>
+                <View style={tw`mb-4`}>
                   <MyTextInput
-                    topLabel="Daily Token Count"
-                    placeholder="Enter daily token count"
-                    value={values.dailyTokenCount.toString()}
-                    onChangeText={handleChange("dailyTokenCount")}
-                    onBlur={handleBlur("dailyTokenCount")}
+                    topLabel="Username"
+                    placeholder="Enter username"
+                    value={values.username}
+                    onChangeText={handleChange("username")}
+                    onBlur={handleBlur("username")}
                     style={tw`mb-2`}
-                    keyboardType="numeric"
+                    autoCapitalize="none"
+                    editable={!isEditing} // Username can't be edited
                   />
-                  {touched.dailyTokenCount && errors.dailyTokenCount && (
+                  {touched.username && errors.username && (
                     <MyText style={tw`text-red-500 text-xs mt-1`}>
-                      {String(errors.dailyTokenCount)}
+                      {String(errors.username)}
                     </MyText>
                   )}
+                </View>
+
+                <View style={tw`mb-4`}>
+                  <MyTextInput
+                    topLabel={
+                      isEditing
+                        ? "New Password (leave blank to keep current)"
+                        : "Password"
+                    }
+                    placeholder={
+                      isEditing ? "Enter new password" : "Enter password"
+                    }
+                    value={values.password}
+                    onChangeText={handleChange("password")}
+                    onBlur={handleBlur("password")}
+                    style={tw`mb-2`}
+                    secureTextEntry
+                  />
+                  {touched.password && errors.password && (
+                    <MyText style={tw`text-red-500 text-xs mt-1`}>
+                      {String(errors.password)}
+                    </MyText>
+                  )}
+                </View>
+
+                <View style={tw`mb-4`}>
+                  <MyTextInput
+                    topLabel={
+                      isEditing ? "Confirm New Password" : "Confirm Password"
+                    }
+                    placeholder="Confirm password"
+                    value={values.confirmPassword}
+                    onChangeText={handleChange("confirmPassword")}
+                    onBlur={handleBlur("confirmPassword")}
+                    style={tw`mb-2`}
+                    secureTextEntry
+                  />
+                  {touched.confirmPassword && errors.confirmPassword && (
+                    <MyText style={tw`text-red-500 text-xs mt-1`}>
+                      {String(errors.confirmPassword)}
+                    </MyText>
+                  )}
+                </View>
+
+                <View style={tw`mb-4`}>
+                  <CustomDropdown
+                    label="Role"
+                    value={values.role}
+                    options={roles}
+                    onValueChange={(value: string | number) => {
+                      setFieldValue("role", value);
+                      if (value !== ROLE_NAMES.DOCTOR) {
+                        setFieldValue("specializations", "");
+                        setFieldValue("hospitalId", ""); // Reset hospitalId when role is not doctor
+                      }
+                    }}
+                    error={touched.role && !!errors.role}
+                    style={tw`relative`}
+                    disabled={isEditing} // Role can't be changed when editing
+                  />
+                  {touched.role && errors.role && (
+                    <MyText style={tw`text-red-500 text-xs mt-1`}>
+                      {String(errors.role)}
+                    </MyText>
+                  )}
+                </View>
+
+                {values.role === ROLE_NAMES.DOCTOR && (
+                  <View style={tw`mb-4`}>
+                    <MultiSelectDropdown
+                      placeholder="Select Specializations"
+                      value={
+                        values.specializations
+                          ? values.specializations.split(",")
+                          : []
+                      }
+                      data={
+                        specializationsList?.map((spec) => ({
+                          label: spec.name,
+                          value: spec.id.toString(),
+                        })) || []
+                      }
+                      onChange={(vals: string[]) =>
+                        setFieldValue(
+                          "specializations",
+                          Array.isArray(vals) ? vals.join(",") : ""
+                        )
+                      }
+                      style={tw`relative`}
+                      disabled={isLoadingSpecializations}
+                      dropdownStyle={{
+                        borderWidth: 2,
+                        borderColor:
+                          touched.specializations && errors.specializations
+                            ? "#ef4444"
+                            : "#d1d5db",
+                      }}
+                    />
+                    {touched.specializations && errors.specializations && (
+                      <MyText style={tw`text-red-500 text-xs mt-1`}>
+                        {String(errors.specializations)}
+                      </MyText>
+                    )}
+                    {isLoadingSpecializations && (
+                      <MyText style={tw`text-gray-500 text-xs mt-1`}>
+                        Loading specializations...
+                      </MyText>
+                    )}
+
+                    <View style={tw`mt-4`}>
+                      <MyTextInput
+                        topLabel="Consultation Fee"
+                        placeholder="Enter consultation fee"
+                        value={values.consultationFee.toString()}
+                        onChangeText={handleChange("consultationFee")}
+                        onBlur={handleBlur("consultationFee")}
+                        style={tw`mb-2`}
+                        keyboardType="numeric"
+                      />
+                      {touched.consultationFee && errors.consultationFee && (
+                        <MyText style={tw`text-red-500 text-xs mt-1`}>
+                          {String(errors.consultationFee)}
+                        </MyText>
+                      )}
+                    </View>
+
+                    <View style={tw`mt-4`}>
+                      <MyTextInput
+                        topLabel="Daily Token Count"
+                        placeholder="Enter daily token count"
+                        value={values.dailyTokenCount.toString()}
+                        onChangeText={handleChange("dailyTokenCount")}
+                        onBlur={handleBlur("dailyTokenCount")}
+                        style={tw`mb-2`}
+                        keyboardType="numeric"
+                      />
+                      {touched.dailyTokenCount && errors.dailyTokenCount && (
+                        <MyText style={tw`text-red-500 text-xs mt-1`}>
+                          {String(errors.dailyTokenCount)}
+                        </MyText>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {values.role === ROLE_NAMES.DOCTOR ||
+                values.role === ROLE_NAMES.HOSPITAL_ADMIN ? (
+                  <View style={tw`mt-4`}>
+                    <CustomDropdown
+                      label="Select Hospital"
+                      value={values.hospitalId}
+                      options={hospitalOptions}
+                      onValueChange={(value: string | number) =>
+                        setFieldValue("hospitalId", value)
+                      }
+                      error={touched.hospitalId && !!errors.hospitalId}
+                      style={tw`relative`}
+                      disabled={isLoadingHospitals}
+                    />
+                    {touched.hospitalId && errors.hospitalId && (
+                      <MyText style={tw`text-red-500 text-xs mt-1`}>
+                        {String(errors.hospitalId)}
+                      </MyText>
+                    )}
+                    {isLoadingHospitals && (
+                      <MyText style={tw`text-gray-500 text-xs mt-1`}>
+                        Loading hospitals...
+                      </MyText>
+                    )}
+                  </View>
+                ) : null}
+
+                <View style={tw`flex-row justify-between mt-6`}>
+                  <MyButton
+                    mode="outlined"
+                    textContent="Cancel"
+                    onPress={() => router.back()}
+                    style={tw`flex-1 mr-2`}
+                  />
+
+                  <MyButton
+                    mode="contained"
+                    textContent={
+                      isSubmitting
+                        ? isEditing
+                          ? "Updating..."
+                          : "Adding..."
+                        : isEditing
+                        ? "Update User"
+                        : "Add User"
+                    }
+                    onPress={handleSubmit as any}
+                    disabled={isSubmitting}
+                    style={tw`flex-1 ml-2`}
+                  />
                 </View>
               </View>
             )}
-
-            <View style={tw`flex-row justify-between mt-6`}>
-              <MyButton
-                mode="outlined"
-                textContent="Cancel"
-                onPress={() => router.back()}
-                style={tw`flex-1 mr-2`}
-              />
-
-              <MyButton
-                mode="contained"
-                textContent={isSubmitting 
-                  ? (isEditing ? "Updating..." : "Adding...") 
-                  : (isEditing ? "Update User" : "Add User")}
-                onPress={handleSubmit as any}
-                disabled={isSubmitting}
-                style={tw`flex-1 ml-2`}
-              />
-            </View>
-          </View>
-        )}
-      </Formik>
+          </Formik>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

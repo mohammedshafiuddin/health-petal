@@ -28,13 +28,13 @@ export interface UserResponsibilities {
   secretaryFor: number[]; // IDs of doctors the user is secretary for
 }
 
-export function useGetUserById(userId: number | string | undefined) {
+export function useGetUserById(userId: number | string | undefined | null) {
   
   return useQuery<User | undefined>({
-    queryKey: ['user', userId],
-    enabled: !!userId,
+    queryKey: ['user', 'user-details', userId],
+    enabled: Boolean(userId),
     queryFn: async () => {
-      if (!userId) return undefined;
+      
       const res = await axios.get<User>(`/users/user/${userId}`);
       return res.data;
     },
@@ -56,33 +56,41 @@ export function useUserResponsibilities() {
 }
 
 export function useCreateUser() {
-  const queryClient = new QueryClient();
-  
-  return useMutation<CreateUserResponse, Error, CreateUserPayload>({
-    mutationFn: async (userPayload: CreateUserPayload) => {
-      const response = await axios.post<CreateUserResponse>('/users/signup', userPayload);
-      return response.data;
+  return useMutation({
+    mutationFn: async (userPayload: FormData) => {
+      try {
+
+        const response = await axios.post('/users/signup', userPayload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        return response.data;
+      }
+      catch (error) {
+        console.log(error);
+      }
     },
-    onSuccess: () => {
-      // Invalidate and refetch users list query if you have one
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    }
   });
 }
 
 export function useCreateBusinessUser() {
   const queryClient = new QueryClient();
-  
-  return useMutation<CreateUserResponse, Error, CreateBusinessUserPayload>({
-    mutationFn: async (userPayload: CreateBusinessUserPayload) => {
-      const response = await axios.post<CreateUserResponse>('/users/business-user', userPayload);
+
+  return useMutation<CreateUserResponse, Error, FormData>({
+    mutationFn: async (formData: FormData) => {
+      const response = await axios.post<CreateUserResponse>('/users/business-user', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     },
     onSuccess: () => {
       // Invalidate and refetch users list query
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['business-users'] });
-    }
+    },
   });
 }
 
@@ -98,14 +106,25 @@ export interface UpdateBusinessUserPayload {
   name: string;
   password?: string; // Optional for updates
   specializationIds?: number[];
+  consultationFee?: number;
+  dailyTokenCount?: number;
+  qualifications?: string;
 }
 
 export function useUpdateBusinessUser(userId: number) {
   const queryClient = new QueryClient();
-  
-  return useMutation<CreateUserResponse, Error, UpdateBusinessUserPayload>({
-    mutationFn: async (updatePayload: UpdateBusinessUserPayload) => {
-      const response = await axios.put<CreateUserResponse>(`/users/${userId}`, updatePayload);
+
+  return useMutation<CreateUserResponse, Error, FormData>({
+    mutationFn: async (formData: FormData) => {
+      const response = await axios.put<CreateUserResponse>(
+        `/users/${userId}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
       return response.data;
     },
     onSuccess: () => {
@@ -113,7 +132,7 @@ export function useUpdateBusinessUser(userId: number) {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['business-users'] });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
-    }
+    },
   });
 }
 

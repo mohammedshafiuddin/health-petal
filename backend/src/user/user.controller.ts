@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { db } from "../db/db_index";
-import { usersTable, userInfoTable, userRolesTable, roleInfoTable, hospitalEmployeesTable, doctorInfoTable, doctorSpecializationsTable, doctorSecretariesTable } from "../db/schema";
+import { usersTable, userInfoTable, userRolesTable, roleInfoTable, hospitalEmployeesTable, doctorInfoTable, doctorSpecializationsTable, doctorSecretariesTable, hospitalTable } from "../db/schema";
 import bcrypt from "bcryptjs";
 import { eq, and, or, inArray, isNotNull, ne } from "drizzle-orm";
 import { ApiError } from "../lib/api-error";
 import jwt from "jsonwebtoken";
 import roleManager, { ROLE_NAMES, defaultRole } from "../lib/roles-manager";
 import { DESIGNATIONS } from "../lib/const-strings";
+import { imageUploadS3 } from '../lib/s3-client';
+import fs from 'fs';
 
 /**
  * Register a new user
@@ -14,6 +16,13 @@ import { DESIGNATIONS } from "../lib/const-strings";
 export const signup = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, email, mobile, address, password, role, username } = req.body;
+    // Parse and log profilePic
+    let profilePicUrl = null;
+    if (req.file) {
+      // Upload to S3 using buffer
+      const key = `profile-pics/${Date.now()}_${req.file.originalname}`;
+      profilePicUrl = await imageUploadS3(req.file.buffer, req.file.mimetype, key);
+    } 
 
     // Validate required fields
     if (!name || !email || !mobile || !password) {
@@ -51,6 +60,7 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
           address,
           username: username,
           joinDate: new Date().toISOString(),
+          profilePicUrl // Save the profilePic URL in the user table
         })
         .returning();
 
@@ -88,6 +98,7 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
           name: newUser.name,
           email: newUser.email,
           mobile: newUser.mobile,
+          profilePicUrl: newUser.profilePicUrl, // Include profilePic URL in the response
         },
         message: "User created successfully"
       });
@@ -104,7 +115,6 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { login, password, useUsername } = req.body;
-    console.log({login, password, useUsername});
     
     // Validate required fields
     if (!login || !password) {
@@ -205,12 +215,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       token,
       message: "Login successful"
     };
-    
-    // Log the response (excluding token for security)
-    console.log("Login response:", {
-      ...responseObj,
-      token: token ? "TOKEN_GENERATED" : "NO_TOKEN" // Don't log the actual token
-    });
+  
 
     // Return user data with token
     return res.status(200).json(responseObj);
@@ -224,10 +229,9 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
  * Add a business user (no email/mobile, only username/password/role/name)
  */
 export const addBusinessUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
+
     const { name, username, password, role, specializationIds, consultationFee, dailyTokenCount, hospitalId } = req.body;
 
-    console.log({name, username, password, role, specializationIds, consultationFee, dailyTokenCount, hospitalId})
     // Validate required fields
     if (!name || !username || !password || !role) {
       throw new ApiError("Missing required fields", 400);
@@ -247,9 +251,6 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
         throw new ApiError("Daily token count is required for doctors", 400);
       }
       
-      if (!hospitalId) {
-        throw new ApiError("Hospital ID is required for doctors", 400);
-      }
     }
 
     // Check if valid role using the role manager
@@ -276,6 +277,16 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Handle profilePic upload
+    let profilePicUrl = null;
+    if (req.file) {
+      profilePicUrl = await imageUploadS3(
+        req.file.buffer,
+        req.file.mimetype,
+        `profile-pics/${Date.now()}_${req.file.originalname}`
+      );
+    }
+
     // Start a transaction
     return await db.transaction(async (tx) => {
       // Create a new user with username and a dummy mobile number (no email required)
@@ -283,9 +294,10 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
         .insert(usersTable)
         .values({
           name,
-          username,  // Store username directly in the username field
+          username: username,  // Store username directly in the username field
           mobile: username + '_mobile',  // Dummy mobile for uniqueness
           joinDate: new Date().toISOString(),
+          profilePicUrl // Save the profilePic URL in the user table
         })
         .returning();
 
@@ -330,22 +342,34 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
         if (!doctorInfo) {
           throw new Error("Failed to create doctor info");
         }
-
+        
         // Add doctor specializations
         if (specializationIds && specializationIds.length > 0) {
           await tx.insert(doctorSpecializationsTable).values(
-            specializationIds.map((specializationId: number) => ({
+            specializationIds.split(',').map((item:string) => item.trim()).map((specializationId: number) => ({
               doctorId: newUser.id, // Use user ID directly since doctorSpecializationsTable now references usersTable
               specializationId,
             }))
           );
         }
         
-        // Add doctor to the hospital as an employee with DOCTOR designation
+        if(hospitalId) {
+
+          // Add doctor to the hospital as an employee with DOCTOR designation
+          await tx.insert(hospitalEmployeesTable).values({
+            hospitalId,
+            userId: newUser.id,
+            designation: DESIGNATIONS.DOCTOR
+          });
+        }
+      }
+
+      // If role is hospital admin, allow optional hospitalId
+      if (role === ROLE_NAMES.HOSPITAL_ADMIN && hospitalId) {
         await tx.insert(hospitalEmployeesTable).values({
           hospitalId,
           userId: newUser.id,
-          designation: DESIGNATIONS.DOCTOR
+          designation: DESIGNATIONS.HOSPITAL_ADMIN,
         });
       }
 
@@ -360,10 +384,6 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
         message: "Business user created successfully"
       });
     });
-  } catch (error) {
-    console.error("Add business user error:", error);
-    next(error instanceof ApiError ? error : new ApiError("Failed to create business user account", 500));
-  }
 };
 
 /**
@@ -455,7 +475,6 @@ export const getPotentialHospitalAdmins = async (req: Request, res: Response, ne
       };
     });
 
-    console.log({usersWithRoleNames: JSON.stringify(usersWithRoleNames), hospitalEmployees: JSON.stringify(hospitalEmployees)})
 
     // Filter for:
     // 1. Users with hospital_admin role
@@ -464,7 +483,6 @@ export const getPotentialHospitalAdmins = async (req: Request, res: Response, ne
       user.roles.includes(ROLE_NAMES.HOSPITAL_ADMIN) && 
       !employeeUserIds.has(user.id)
     );
-    console.log({potentialAdmins})
     
 
     // Format the response
@@ -483,11 +501,67 @@ export const getPotentialHospitalAdmins = async (req: Request, res: Response, ne
 };
 
 /**
+ * Get potential doctor employees
+ * @description Retrieves users with doctor role who are not yet assigned to a hospital
+ */
+export const getPotentialDoctorEmployees = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get all users with username and include their roles directly using relations
+    const usersWithRoles = await db.query.usersTable.findMany({
+      where: (users) => isNotNull(users.username),
+      with: {
+        roles: {
+          with: {
+            role: true
+          }
+        }
+      }
+    });
+    
+    // Get all hospital employees
+    const hospitalEmployees = await db.query.hospitalEmployeesTable.findMany();
+    const employeeUserIds = new Set(hospitalEmployees.map(employee => employee.userId));
+    
+    // Transform users data to include role names directly
+    const usersWithRoleNames = usersWithRoles.map(user => {
+      // Extract role names from the relations
+      const roleNames = user.roles.map(userRole => userRole.role.name);
+      
+      return {
+        ...user,
+        roles: roleNames
+      };
+    });
+
+    // Filter for:
+    // 1. Users with doctor role
+    // 2. Users not already assigned to a hospital
+    const potentialDoctors = usersWithRoleNames.filter(user => 
+      user.roles.includes(ROLE_NAMES.DOCTOR) && 
+      !employeeUserIds.has(user.id)
+    );
+    
+    // Format the response
+    const formattedDoctors = potentialDoctors.map(user => ({
+      id: user.id,
+      name: user.name,
+      username: user.username || '',
+      roles: user.roles // Direct access to roles array
+    }));
+
+    return res.status(200).json(formattedDoctors);
+  } catch (error) {
+    console.error("Get potential doctor employees error:", error);
+    next(error instanceof ApiError ? error : new ApiError("Failed to fetch potential doctor employees", 500));
+  }
+};
+
+/**
  * Get user by ID
  * @description Retrieves user information including role and specializations if user is a doctor
  */
 export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
+
     const userId = parseInt(req.params.userId);
 
     if (isNaN(userId)) {
@@ -516,6 +590,13 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
     // Check if user is a doctor
     const isDoctor = roleNames.includes(ROLE_NAMES.DOCTOR);
     
+    // Generate signed URL for profilePic if present
+    let signedProfilePicUrl = null;
+    if (user.profilePicUrl) {
+      const { generateSignedUrlFromS3Url } = await import("../lib/s3-client");
+      signedProfilePicUrl = await generateSignedUrlFromS3Url(user.profilePicUrl);
+    }
+
     // Format base user response
     const userResponse = {
       id: user.id,
@@ -524,7 +605,7 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       mobile: user.mobile,
       username: user.username,
       address: user.address,
-      profilePicUrl: user.profilePicUrl,
+      profilePicUrl: signedProfilePicUrl,
       joinDate: user.joinDate,
       role: roleNames[0], // Primary role
       roles: roleNames,
@@ -536,6 +617,11 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       const doctorInfo = await db.query.doctorInfoTable.findFirst({
         where: (docs) => eq(docs.userId, userId)
       });
+      const hospital = await db.select({
+        hospitalName: hospitalTable.name
+      }).from(hospitalEmployeesTable)
+      .innerJoin(hospitalTable, eq(hospitalEmployeesTable.hospitalId, hospitalTable.id))
+      .where(eq(hospitalEmployeesTable.userId, user.id));
 
       if (doctorInfo) {
         // Get specializations
@@ -553,21 +639,20 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
           qualifications: doctorInfo.qualifications,
           dailyTokenCount: doctorInfo.dailyTokenCount,
           consultationFee: doctorInfo.consultationFee,
+          hospital: hospital[0].hospitalName,
           specializations: specializations.map(s => ({
             id: s.specialization.id,
-            name: s.specialization.name,
+        profilePicUrl: null, // Placeholder for signed URL
             description: s.specialization.description
           }))
         });
       }
     }
 
+    console.log({userResponse})
+    
     // Return basic user info if not a doctor or no doctor info found
     return res.status(200).json(userResponse);
-  } catch (error) {
-    console.error("Get user by ID error:", error);
-    next(error instanceof ApiError ? error : new ApiError("Failed to fetch user details", 500));
-  }
 };
 
 /**
@@ -647,13 +732,18 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
           .where(eq(userInfoTable.userId, userId));
       }
 
-      // Only update user table if there are fields to update
-      if (Object.keys(updateData).length > 0) {
-        await tx
-          .update(usersTable)
-          .set(updateData)
-          .where(eq(usersTable.id, userId));
+      // Handle profilePic upload
+      if (req.file) {
+        
+        updateData.profilePicUrl = await imageUploadS3(
+          req.file.buffer,
+          req.file.mimetype,
+          `profile-pics/${Date.now()}_${req.file.originalname}`
+        );
       }
+
+      // Update user in the database
+      await tx.update(usersTable).set(updateData).where(eq(usersTable.id, userId));
 
       // Check if user is a doctor
       const isDoctor = existingUser.roles.some(role => role.role.name === ROLE_NAMES.DOCTOR);
@@ -808,8 +898,6 @@ export const getUserResponsibilities = async (req: Request, res: Response, next:
   try {
     const userId = parseInt(req.params.userId) || req.user?.userId;
     
-    console.log({userId})
-    
     if (!userId) {
       throw new ApiError('User ID is required', 400);
     }
@@ -840,4 +928,3 @@ export const getUserResponsibilities = async (req: Request, res: Response, next:
     next(error instanceof ApiError ? error : new ApiError('Failed to get user responsibilities', 500));
   }
 };
-  
