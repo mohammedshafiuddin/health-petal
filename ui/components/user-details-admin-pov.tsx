@@ -449,9 +449,6 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
                         >
                           <MyText style={tw`text-lg font-bold`}>+</MyText>
                         </TouchableOpacity>
-                        <MyText style={tw`text-xs text-gray-500 ml-4`}>
-                          (Adjust for offline registrations)
-                        </MyText>
                       </View>
                       {/* Consultations Done Count with adjustment buttons */}
                       <View style={tw`flex-row items-center mb-2`}>
@@ -483,9 +480,6 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
                         >
                           <MyText style={tw`text-lg font-bold`}>+</MyText>
                         </TouchableOpacity>
-                        <MyText style={tw`text-xs text-gray-500 ml-4`}>
-                          (Track completed consultations)
-                        </MyText>
                       </View>
                     </>
                   )}

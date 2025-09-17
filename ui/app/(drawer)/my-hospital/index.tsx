@@ -3,11 +3,13 @@ import { View, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 're
 import { useRouter } from 'expo-router';
 import tw from '@/app/tailwind';
 import MyText from '@/components/text';
+import HorizontalImageScroller from '@/components/HorizontalImageScroller';
 import MyButton from '@/components/button';
 import { ThemedView } from '@/components/ThemedView';
 import { useAuth } from '@/components/context/auth-context';
 import { useGetHospitalById, useHospitalAdminDashboard } from '@/api-hooks/hospital.api';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import AppContainer from '@/components/app-container';
 
 export default function MyHospital() {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function MyHospital() {
     isLoading: isLoadingHospital, 
     error: hospitalError 
   } = useGetHospitalById(hospitalId);
+  
   
   const {
     data: dashboardData,
@@ -52,19 +55,26 @@ export default function MyHospital() {
   }
   
   return (
-    <ScrollView style={tw`flex-1`}>
-      <ThemedView style={tw`p-4`}>
+    <AppContainer>
         <View style={tw`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-4`}>
           <MyText style={tw`text-2xl font-bold mb-2`}>{hospital.name}</MyText>
           <View style={tw`mt-4`}>
             <MyText style={tw`text-lg font-semibold mb-2`}>Address</MyText>
             <MyText style={tw`text-gray-700 dark:text-gray-300`}>{hospital.address}</MyText>
           </View>
-          
+
           {hospital.description && (
             <View style={tw`mt-4`}>
               <MyText style={tw`text-lg font-semibold mb-2`}>Description</MyText>
               <MyText style={tw`text-gray-700 dark:text-gray-300`}>{hospital.description}</MyText>
+            </View>
+          )}
+
+          {/* Hospital Images Section */}
+          {hospital.hospitalImages && hospital.hospitalImages.length > 0 && (
+            <View style={tw`mt-4`}>
+              <MyText style={tw`text-lg font-semibold mb-2`}>Hospital Images</MyText>
+              <HorizontalImageScroller urls={hospital.hospitalImages} imageHeight={128} imageWidth={128} />
             </View>
           )}
         </View>
@@ -161,18 +171,13 @@ export default function MyHospital() {
         
         <View style={tw`mt-6 px-4`}>
           <MyButton
-            style={tw`bg-blue-500 mb-4`}
+            // style={tw`bg-blue-500 mb-4`}
             textContent="Edit Hospital Profile"
             onPress={() => router.push("/(drawer)/my-hospital/edit-hospital" as any)}
           />
           
-          <MyButton
-            style={tw`bg-green-500`}
-            textContent="Add Doctor"
-            onPress={() => router.push("/(drawer)/my-hospital/add-doctor" as any)}
-          />
         </View>
-      </ThemedView>
-    </ScrollView>
+    </AppContainer>
   );
 }
+

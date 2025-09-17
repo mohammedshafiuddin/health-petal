@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { AuthContext } from "./auth-context";
+import { ROLE_NAMES } from "@/lib/constants";
 // import { getRoles, saveRoles, deleteRoles } from "../../hooks/useJWT";
 // import { ROLE_NAMES } from "../../lib/constants";
 
@@ -35,3 +36,8 @@ export const useRoles = () => {
   if (!ctx) throw new Error("useRoles must be used within a RolesProvider");
   return ctx.roles;
 };
+
+export const useIsAdmin = () => {
+  const roles = useRoles();
+  return roles?.includes(ROLE_NAMES.ADMIN);
+}

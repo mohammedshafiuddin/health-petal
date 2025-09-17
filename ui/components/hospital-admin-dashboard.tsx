@@ -203,6 +203,13 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
     });
   };
 
+    // Show API update error if there was an issue updating
+  React.useEffect(() => {
+    if (hasUpdateError && updateError) {
+      ErrorToast(`Update failed: ${updateError.message || 'Unknown error'}`);
+    }
+  }, [hasUpdateError, updateError]);
+
   // Show error state if there was an error fetching data
   if (isError) {
     return (
@@ -219,12 +226,7 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
     );
   }
   
-  // Show API update error if there was an issue updating
-  React.useEffect(() => {
-    if (hasUpdateError && updateError) {
-      ErrorToast(`Update failed: ${updateError.message || 'Unknown error'}`);
-    }
-  }, [hasUpdateError, updateError]);
+
 
   // Render loading state
   if (isLoading || !dashboardData) {

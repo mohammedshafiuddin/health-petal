@@ -1,11 +1,11 @@
-import { useNavigation } from "expo-router";
+import { useFocusEffect, useNavigation } from "expo-router";
 import React from "react";
 
 
 function useHideDrawerHeader() {
 
   const navigation = useNavigation();
-  React.useEffect(() => {
+  useFocusEffect(() => {
     let drawerNav = navigation.getParent();
     const drawerNavList:any = [];
     // Collect all parent navigators

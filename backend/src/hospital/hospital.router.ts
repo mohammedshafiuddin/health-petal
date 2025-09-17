@@ -21,7 +21,7 @@ router.get("/admin-dashboard/:hospitalId", verifyToken,getHospitalAdminDashboard
 
 // Generic hospital routes with parameters
 router.get("/:id", getHospitalById);
-router.put("/:id", updateHospital);
+router.put("/:id", uploadHandler.array('hospitalImages'),updateHospital);
 router.delete("/:id", deleteHospital);
 
 export default router;

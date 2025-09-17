@@ -173,9 +173,9 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
         ) : (
           <View>
             {availabilityData?.availabilities.map((item, index) => (
-              <View key={index} style={tw`mb-3 border-b border-gray-200 pb-2`}>
-                <View style={tw`flex-row justify-between items-center mb-1`}>
-                  <MyText style={tw`font-medium`}>
+              <View key={index} style={tw`mb-4 p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-md`}>
+                <View style={tw`flex-row justify-between items-center mb-2`}>
+                  <MyText style={tw`font-bold text-lg text-indigo-700 dark:text-indigo-300`}>
                     {new Date(item.date).toLocaleDateString(undefined, {
                       weekday: "short",
                       month: "short",
@@ -187,7 +187,7 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
                   item.availability.availableTokens > 0 &&
                   !item.availability.isStopped ? (
                     <TouchableOpacity
-                      style={tw`bg-green-500 px-3 py-1 rounded-md`}
+                      style={tw`bg-green-500 px-4 py-2 rounded-xl shadow`}
                       onPress={() =>
                         openBookingDialog(
                           item.date,
@@ -198,13 +198,13 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
                       }
                       disabled={!userId}
                     >
-                      <MyText style={tw`text-white font-medium text-sm`}>
+                      <MyText style={tw`text-white font-bold text-base`}>
                         Book Token
                       </MyText>
                     </TouchableOpacity>
                   ) : (
-                    <View style={tw`bg-gray-400 px-3 py-1 rounded-md`}>
-                      <MyText style={tw`text-white font-medium text-sm`}>
+                    <View style={tw`bg-gray-400 px-4 py-2 rounded-xl`}>
+                      <MyText style={tw`text-white font-bold text-base`}>
                         Unavailable
                       </MyText>
                     </View>
@@ -213,26 +213,31 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
 
                 {item.availability ? (
                   <View>
-                    <View style={tw`flex-row flex-wrap`}>
-                      <MyText style={tw`text-sm mr-4`}>
-                        Available: {item.availability.availableTokens}/
-                        {item.availability.totalTokenCount}
-                      </MyText>
-                      <MyText style={tw`text-sm`}>
-                        Current token: #{item.availability.filledTokenCount}
+                    <View style={tw`flex-row flex-wrap items-center mb-2`}>
+                      <View style={tw`bg-indigo-100 dark:bg-indigo-900 px-4 py-2 rounded-xl shadow mr-4 flex-row items-center`}>
+                        <MyText style={tw`text-indigo-700 dark:text-indigo-300 font-bold text-base mr-2`}>
+                          Current Token #
+                        </MyText>
+                        <MyText style={tw`text-indigo-900 dark:text-indigo-100 font-extrabold text-2xl`}>
+                          {item.availability.filledTokenCount}
+                        </MyText>
+                      </View>
+                    </View>
+                    <View style={tw`flex-row flex-wrap items-center mb-2`}>
+                      <MyText style={tw`text-sm text-gray-700 dark:text-gray-300 mr-4`}>
+                        Available: {item.availability.availableTokens}/{item.availability.totalTokenCount}
                       </MyText>
                     </View>
 
                     <View style={tw`flex-row flex-wrap mt-1`}>
-                      <MyText style={tw`text-sm`}>
-                        Consultations completed:{" "}
-                        {item.availability.consultationsDone}
+                      <MyText style={tw`text-sm text-gray-700 dark:text-gray-300`}>
+                        Consultations completed: {item.availability.consultationsDone}
                       </MyText>
                     </View>
 
                     {item.availability.isStopped && (
-                      <View style={tw`mt-1`}>
-                        <MyText style={tw`text-red-500 text-sm`}>
+                      <View style={tw`mt-2`}>
+                        <MyText style={tw`text-red-500 text-base font-semibold`}>
                           Tokens are currently stopped for this day
                         </MyText>
                       </View>
@@ -240,15 +245,15 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
 
                     {item.availability.availableTokens === 0 &&
                       !item.availability.isStopped && (
-                        <View style={tw`mt-1`}>
-                          <MyText style={tw`text-red-500 text-sm`}>
+                        <View style={tw`mt-2`}>
+                          <MyText style={tw`text-red-500 text-base font-semibold`}>
                             No more tokens available for this day
                           </MyText>
                         </View>
                       )}
                   </View>
                 ) : (
-                  <MyText style={tw`text-red-500 text-sm`}>
+                  <MyText style={tw`text-red-500 text-base font-semibold`}>
                     Not Available
                   </MyText>
                 )}

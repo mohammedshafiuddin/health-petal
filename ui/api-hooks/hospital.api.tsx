@@ -67,8 +67,8 @@ export function useGetHospitalById(hospitalId: number | string | undefined) {
 export function useCreateHospital() {
   const queryClient = useQueryClient();
   
-  return useMutation<CreateHospitalResponse, Error, CreateHospitalPayload>({
-    mutationFn: async (hospitalPayload: CreateHospitalPayload) => {
+  return useMutation<CreateHospitalResponse, Error, FormData>({
+    mutationFn: async (hospitalPayload: FormData) => {
       const response = await axios.post<CreateHospitalResponse>('/hospitals', hospitalPayload);
       return response.data;
     },
@@ -85,15 +85,22 @@ export function useCreateHospital() {
 export function useUpdateHospital() {
   const queryClient = useQueryClient();
   
-  return useMutation<UpdateHospitalResponse, Error, UpdateHospitalPayload>({
-    mutationFn: async ({ id, ...hospitalPayload }: UpdateHospitalPayload) => {
+  return useMutation<UpdateHospitalResponse, Error, FormData>({
+    mutationFn: async (hospitalPayload: FormData) => {
+      const id = hospitalPayload.get("id");
+      hospitalPayload.delete("id");
+      console.log(id, hospitalPayload);
       
-      const response = await axios.put<UpdateHospitalResponse>(`/hospitals/${id}`, hospitalPayload);
+      const response = await axios.put<UpdateHospitalResponse>(`/hospitals/${id}`, hospitalPayload, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
       return response.data;
     },
     onSuccess: (_, variables) => {
       // Invalidate and refetch specific hospital and hospitals list
-      queryClient.invalidateQueries({ queryKey: ['hospital', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['hospital'] });
       queryClient.invalidateQueries({ queryKey: ['hospitals'] });
     }
   });

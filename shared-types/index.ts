@@ -21,6 +21,7 @@ export interface Hospital {
   address: string;
   adminId?: number;
   adminName?: string;
+  hospitalImages?: string[]
 }
 
 export interface DoctorSpecialization {

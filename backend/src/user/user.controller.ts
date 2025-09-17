@@ -648,8 +648,6 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
         });
       }
     }
-
-    console.log({userResponse})
     
     // Return basic user info if not a doctor or no doctor info found
     return res.status(200).json(userResponse);

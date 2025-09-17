@@ -14,8 +14,6 @@ import { useGetUserById } from "@/api-hooks/user.api";
 
 import { User } from "shared-types";
 import { useRoles } from "./context/roles-context";
-import { ROLE_NAMES } from "@/lib/constants";
-import { useIsHospitalAdmin } from "./context/auth-context";
 import { useRouter } from "expo-router";
 
 interface Specialization {
@@ -80,9 +78,6 @@ const DoctorDetails: React.FC<DoctorDetailsProps> = ({
 
   const Container = onPress ? TouchableOpacity : View;
   const roles = useRoles();
-  const isAdmin = roles?.includes(ROLE_NAMES.ADMIN);
-  const isHospitalAdmin = useIsHospitalAdmin(doctorData?.hospital);
-  const isGenUser = roles?.includes(ROLE_NAMES.GENERAL_USER);
 
   // Handle loading state
   if (isLoading) {

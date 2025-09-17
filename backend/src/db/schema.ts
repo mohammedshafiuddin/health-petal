@@ -1,4 +1,3 @@
-
 import { pgTable, integer, varchar, date, unique, boolean, text, timestamp, numeric, json } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -87,6 +86,7 @@ export const hospitalTable = pgTable(
 		name: varchar({ length: 255 }).notNull(),
 		address: varchar({ length: 500 }).notNull(),
 		description: varchar({ length: 1000 }),
+		hospitalImages: varchar('hospital_images', { length: 2000 }), // Comma-separated image URLs
 	}
 );
 

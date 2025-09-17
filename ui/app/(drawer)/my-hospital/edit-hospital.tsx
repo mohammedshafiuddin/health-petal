@@ -14,13 +14,6 @@ export default function EditHospitalScreen() {
   const router = useRouter();
   const { responsibilities } = useAuth();
   const hospitalId = responsibilities?.hospitalAdminFor || undefined;
-  
-  // Use the hook to hide the drawer header
-
-  
-  const handleCancel = () => {
-    router.back();
-  };
 
   return (
     <AppContainer>
