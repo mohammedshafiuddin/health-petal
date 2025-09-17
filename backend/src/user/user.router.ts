@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { signup, login, addBusinessUser, getBusinessUsers, getPotentialHospitalAdmins, getPotentialDoctorEmployees, getUserById, updateUser, getUserResponsibilities } from "./user.controller";
+import { signup, login, addBusinessUser, getBusinessUsers, getPotentialHospitalAdmins, getPotentialDoctorEmployees, getUserById, updateUser, getUserResponsibilities, getUpcomingTokens } from "./user.controller";
 import { verifyToken } from "../middleware/auth";
 import uploadHandler from '../lib/upload-handler';
 
@@ -16,5 +16,6 @@ router.get("/user/:userId", verifyToken, getUserById);
 router.put("/:userId", verifyToken, uploadHandler.single('profilePic'), updateUser);
 router.get("/responsibilities/:userId", getUserResponsibilities);
 router.get("/responsibilities", verifyToken, getUserResponsibilities);
+router.get("/upcoming-tokens", verifyToken, getUpcomingTokens);
 
 export default router;

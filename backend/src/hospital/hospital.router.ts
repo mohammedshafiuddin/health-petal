@@ -5,7 +5,8 @@ import {
   getHospitalById,
   updateHospital,
   deleteHospital,
-  getHospitalAdminDashboard
+  getHospitalAdminDashboard,
+  getHospitalDoctors
 } from "./hospital.controller";
 import { verifyToken } from "../middleware/auth";
 import uploadHandler from '../lib/upload-handler';
@@ -18,6 +19,9 @@ router.get("/", getHospitals);
 
 // Hospital admin specific routes
 router.get("/admin-dashboard/:hospitalId", verifyToken,getHospitalAdminDashboard);
+
+// Hospital doctors route
+router.get("/:hospitalId/doctors", getHospitalDoctors);
 
 // Generic hospital routes with parameters
 router.get("/:id", getHospitalById);

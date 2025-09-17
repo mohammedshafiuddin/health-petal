@@ -4,6 +4,7 @@ import MyText from '@/components/text';
 import tw from '@/app/tailwind';
 import { ThemedView } from './ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Specialization {
   id: number;
@@ -45,45 +46,62 @@ const HospitalDetails: React.FC<HospitalDetailsProps> = ({
   return (
     <Container 
       style={[
-        tw`rounded-lg mb-4 overflow-hidden shadow-sm`,
+        tw`rounded-xl mb-4 overflow-hidden shadow-md`,
         { backgroundColor },
-        styles.container,
-        { borderColor: '#e5e7eb' }
+        styles.container
       ]} 
       onPress={onPress}
     >
-      <View style={tw`p-4`}>
-        <View style={tw`flex-row items-center mb-2`}>
-          {hospital.imageUrl ? (
-            <Image 
-              source={{ uri: hospital.imageUrl }} 
-              style={tw`h-14 w-14 rounded mr-3`}
-            />
-          ) : (
-            <View style={[tw`h-14 w-14 rounded mr-3 items-center justify-center bg-blue-100`]}>
-              <MyText style={tw`text-blue-800 text-lg font-bold`}>
-                {hospital.name.charAt(0).toUpperCase()}
-              </MyText>
-            </View>
-          )}
-          
-          <View style={tw`flex-1`}>
-            <MyText style={[tw`text-lg font-bold`, { color: textColor }]}>
-              {hospital.name}
-            </MyText>
-            
-            {hospital.specializations && hospital.specializations.length > 0 && (
-              <MyText style={[tw`text-sm`, { color: secondaryColor }]}>
-                {hospital.specializations.map(spec => spec.name).slice(0, 3).join(', ')}
-                {hospital.specializations.length > 3 && ' +' + (hospital.specializations.length - 3) + ' more'}
-              </MyText>
-            )}
+      {/* Hospital Image */}
+      <View style={tw`h-32 bg-gray-200 dark:bg-gray-800`}>
+        {hospital.imageUrl ? (
+          <Image 
+            source={{ uri: hospital.imageUrl }} 
+            style={tw`w-full h-full`} 
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={tw`flex-1 items-center justify-center`}>
+            <Ionicons name="business" size={32} color="#9ca3af" />
           </View>
+        )}
+      </View>
+      
+      <View style={tw`p-4`}>
+        <MyText style={[tw`text-xl font-bold mb-1`, { color: textColor }]}>
+          {hospital.name}
+        </MyText>
+        
+        <View style={tw`flex-row items-start mt-1`}>
+          <Ionicons name="location" size={16} color={secondaryColor} style={tw`mt-0.5 mr-1`} />
+          <MyText style={[tw`text-sm flex-1`, { color: secondaryColor }]}>
+            {hospital.address}
+          </MyText>
         </View>
         
-        <MyText style={[tw`text-sm`, { color: textColor }]}>
-          {hospital.address}
-        </MyText>
+        {hospital.specializations && hospital.specializations.length > 0 && (
+          <View style={tw`flex-row flex-wrap mt-2`}>
+            {hospital.specializations.slice(0, 3).map((spec) => (
+              <View 
+                key={spec.id} 
+                style={[
+                  tw`mr-2 mb-2 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900`, 
+                ]}
+              >
+                <MyText style={tw`text-xs text-blue-700 dark:text-blue-200`}>
+                  {spec.name}
+                </MyText>
+              </View>
+            ))}
+            {hospital.specializations.length > 3 && (
+              <View style={tw`mr-2 mb-2 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800`}>
+                <MyText style={tw`text-xs text-gray-600 dark:text-gray-400`}>
+                  +{hospital.specializations.length - 3} more
+                </MyText>
+              </View>
+            )}
+          </View>
+        )}
       </View>
       
       {showFullDetails && (
@@ -103,11 +121,12 @@ const HospitalDetails: React.FC<HospitalDetailsProps> = ({
                   <View 
                     key={spec.id} 
                     style={[
-                      tw`mr-2 mb-2 px-2 py-1 rounded-full bg-blue-50`, 
-                      { borderWidth: 1, borderColor: '#dbeafe' }
+                      tw`mr-2 mb-2 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900`, 
                     ]}
                   >
-                    <MyText style={tw`text-xs text-blue-700`}>{spec.name}</MyText>
+                    <MyText style={tw`text-xs text-blue-700 dark:text-blue-200`}>
+                      {spec.name}
+                    </MyText>
                   </View>
                 ))}
               </View>
@@ -118,7 +137,7 @@ const HospitalDetails: React.FC<HospitalDetailsProps> = ({
             <View>
               <MyText style={tw`text-sm font-medium mb-1`}>Key Staff</MyText>
               {hospital.employees.slice(0, 5).map((employee, index) => (
-                <View key={employee.id || index} style={tw`flex-row justify-between mb-1`}>
+                <View key={employee.id || index} style={tw`flex-row justify-between py-2 border-b border-gray-100 dark:border-gray-800`}>
                   <MyText style={tw`text-sm`}>{employee.name}</MyText>
                   <MyText style={[tw`text-sm`, { color: secondaryColor }]}>
                     {employee.designation}
@@ -126,7 +145,7 @@ const HospitalDetails: React.FC<HospitalDetailsProps> = ({
                 </View>
               ))}
               {hospital.employees.length > 5 && (
-                <MyText style={[tw`text-sm text-right`, { color: secondaryColor }]}>
+                <MyText style={[tw`text-sm text-right mt-2`, { color: secondaryColor }]}>
                   +{hospital.employees.length - 5} more staff
                 </MyText>
               )}
@@ -141,6 +160,7 @@ const HospitalDetails: React.FC<HospitalDetailsProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderWidth: 1,
+    borderColor: '#e5e7eb',
   }
 });
 

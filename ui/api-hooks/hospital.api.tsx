@@ -1,6 +1,6 @@
 import axios from "@/services/axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Hospital } from "shared-types";
+import type { Doctor, DoctorSpecialization, Hospital } from "shared-types";
 
 // Create hospital payload interface
 export interface CreateHospitalPayload {
@@ -144,20 +144,30 @@ export function useGetPotentialHospitalAdmins() {
   });
 }
 
-export interface Doctor {
-  id: number;
-  name: string;
+export interface DoctorWithSpecializations extends Doctor {
+  specializations?: DoctorSpecialization[];
   profilePicUrl: string | null;
-  qualifications: string | null;
-  consultationFee: number;
-  tokensIssuedToday: number;
-  totalTokenCount: number;
-  consultationsDone: number;
-  currentConsultationNumber: number;
-  isAvailable: boolean;
-  availableTokens: number;
-  // Add date field for the API call
-  date?: string;
+}
+
+export interface HospitalDoctorsData {
+  doctors: DoctorWithSpecializations[];
+}
+
+/**
+ * Hook to fetch hospital doctors data
+ */
+export function useGetHospitalDoctors(hospitalId: number | null | undefined) {
+  return useQuery<HospitalDoctorsData>({
+    queryKey: ['hospitalDoctors', hospitalId],
+    queryFn: async () => {
+      if (!hospitalId) {
+        throw new Error("Hospital ID is required");
+      }
+      const response = await axios.get(`/hospitals/${hospitalId}/doctors`);
+      return response.data;
+    },
+    enabled: !!hospitalId, // Only run the query if hospitalId is provided
+  });
 }
 
 export interface HospitalAdminDashboardData {

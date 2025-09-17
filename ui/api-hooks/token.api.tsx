@@ -205,3 +205,25 @@ export function useDoctorTodaysTokens(doctorId: number) {
     enabled: !!doctorId,
   });
 }
+
+/**
+ * Hook to update token status
+ * @param tokenId The ID of the token to update
+ */
+export function useUpdateTokenStatus() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ tokenId, status, consultationNotes }: { tokenId: number, status?: string, consultationNotes?: string }) => {
+      const response = await axios.patch(`/tokens/${tokenId}/status`, { status, consultationNotes });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries({ queryKey: ['doctor-todays-tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['hospital-todays-tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['my-upcoming-tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['my-past-tokens'] });
+    }
+  });
+}

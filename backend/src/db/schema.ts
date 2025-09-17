@@ -229,6 +229,8 @@ export const tokenInfoTable = pgTable(
 		queueNum: integer("queue_num").notNull(),
 		paymentId: integer("payment_id").references(() => paymentInfoTable.id).notNull(),
 		description: varchar({ length: 1000 }),
+		status: varchar("status", { length: 20 }).default("UPCOMING"), // New status field
+		consultationNotes: varchar("consultation_notes", { length: 1000 }), // New consultation notes field
 		createdAt: date("created_at").notNull().default("now()"),
 	},
 	(t) => ({

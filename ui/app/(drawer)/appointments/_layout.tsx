@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { colors } from '@/lib/theme-colors';
 
-export default function MyTokensLayout() {
+export default function AppointmentsLayout() {
   return (
     <Stack
       screenOptions={{
@@ -18,7 +18,7 @@ export default function MyTokensLayout() {
       <Stack.Screen 
         name="index" 
         options={{ 
-          title: 'My Tokens',
+          title: 'Find Doctors',
           headerShown: false
         }} 
       />

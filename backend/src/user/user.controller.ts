@@ -1,14 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import { db } from "../db/db_index";
-import { usersTable, userInfoTable, userRolesTable, roleInfoTable, hospitalEmployeesTable, doctorInfoTable, doctorSpecializationsTable, doctorSecretariesTable, hospitalTable } from "../db/schema";
+import { usersTable, userInfoTable, userRolesTable, roleInfoTable, hospitalEmployeesTable, doctorInfoTable, doctorSpecializationsTable, doctorSecretariesTable, hospitalTable, tokenInfoTable } from "../db/schema";
 import bcrypt from "bcryptjs";
-import { eq, and, or, inArray, isNotNull, ne } from "drizzle-orm";
+import { eq, and, or, inArray, isNotNull, ne, gte, sql } from "drizzle-orm";
 import { ApiError } from "../lib/api-error";
 import jwt from "jsonwebtoken";
 import roleManager, { ROLE_NAMES, defaultRole } from "../lib/roles-manager";
 import { DESIGNATIONS } from "../lib/const-strings";
 import { imageUploadS3 } from '../lib/s3-client';
 import fs from 'fs';
+import dayjs from 'dayjs';
 
 /**
  * Register a new user
@@ -684,21 +685,36 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     }
 
     // Check if user is trying to update to an email or mobile that already exists
-    if (email || mobile) {
-      const conflictingUser = await db.query.usersTable.findFirst({
-        where: (users) => {
-          return and(
-            ne(users.id, userId),
-            or(
-              email && email !== existingUser.email ? eq(users.email, email) : undefined,
-              mobile && mobile !== existingUser.mobile ? eq(users.mobile, mobile) : undefined
-            )
-          );
-        },
-      });
+    // Only perform this check if email or mobile are being updated to different values
+    const emailChanged = email !== undefined && email !== null && email !== existingUser.email;
+    const mobileChanged = mobile !== undefined && mobile !== null && mobile !== existingUser.mobile;
+    
+    if (emailChanged || mobileChanged) {
+      // Build query conditions for checking conflicts
+      const conflictConditions: any[] = [];
+      
+      if (emailChanged) {
+        conflictConditions.push(eq(usersTable.email, email));
+      }
+      
+      if (mobileChanged) {
+        conflictConditions.push(eq(usersTable.mobile, mobile));
+      }
+      
+      // Check for conflicts with other users
+      if (conflictConditions.length > 0) {
+        const conflictingUser = await db.query.usersTable.findFirst({
+          where: (users) => {
+            return and(
+              ne(users.id, userId),
+              conflictConditions.length > 1 ? or(...conflictConditions) : conflictConditions[0]
+            );
+          },
+        });
 
-      if (conflictingUser) {
-        throw new ApiError("Email or mobile number already in use", 409);
+        if (conflictingUser) {
+          throw new ApiError("Email or mobile number already in use", 409);
+        }
       }
     }
 
@@ -926,3 +942,68 @@ export const getUserResponsibilities = async (req: Request, res: Response, next:
     next(error instanceof ApiError ? error : new ApiError('Failed to get user responsibilities', 500));
   }
 };
+
+/**
+ * Get user's upcoming tokens
+ * Returns a list of upcoming appointments for the user
+ */
+export const getUpcomingTokens = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      throw new ApiError('User not authenticated', 401);
+    }
+    
+    // Query the database for upcoming tokens
+    const upcomingTokens = await db
+      .select({
+        id: tokenInfoTable.id,
+        doctorId: tokenInfoTable.doctorId,
+        tokenDate: tokenInfoTable.tokenDate,
+        queueNum: tokenInfoTable.queueNum,
+        description: tokenInfoTable.description,
+        status: tokenInfoTable.status,
+        createdAt: tokenInfoTable.createdAt,
+        doctor: {
+          id: usersTable.id,
+          name: usersTable.name,
+          profilePicUrl: usersTable.profilePicUrl
+        },
+        hospital: {
+          name: hospitalTable.name
+        }
+      })
+      .from(tokenInfoTable)
+      .innerJoin(usersTable, eq(tokenInfoTable.doctorId, usersTable.id))
+      .innerJoin(hospitalEmployeesTable, eq(tokenInfoTable.doctorId, hospitalEmployeesTable.userId))
+      .innerJoin(hospitalTable, eq(hospitalEmployeesTable.hospitalId, hospitalTable.id))
+      .where(
+        and(
+          eq(tokenInfoTable.userId, userId),
+          eq(tokenInfoTable.status, 'UPCOMING'),
+          gte(tokenInfoTable.tokenDate, sql`CURRENT_DATE`)
+        )
+      )
+      .orderBy(tokenInfoTable.tokenDate);
+    
+    // Transform the data to match our UpcomingAppointment interface
+    const upcomingAppointments = upcomingTokens.map(token => ({
+      id: token.id,
+      doctorName: token.doctor.name,
+      doctorImageUrl: token.doctor.profilePicUrl || undefined,
+      date: token.tokenDate.toString().split('T')[0],
+      hospital: token.hospital.name,
+      queueNumber: token.queueNum,
+      status: token.status
+    }));
+    
+    return res.status(200).json({
+      appointments: upcomingAppointments
+    });
+  } catch (error) {
+    console.error('Error getting upcoming tokens:', error);
+    next(error instanceof ApiError ? error : new ApiError('Failed to get upcoming tokens', 500));
+  }
+};
+

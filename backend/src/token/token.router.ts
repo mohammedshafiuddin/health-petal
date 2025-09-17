@@ -6,7 +6,8 @@ import {
   getMyUpcomingTokens, 
   getMyPastTokens,
   getHospitalTodaysTokens,
-  getDoctorTodaysTokens
+  getDoctorTodaysTokens,
+  updateTokenStatus
 } from './token.controller';
 import { verifyToken } from '../middleware/auth';
 
@@ -60,5 +61,12 @@ router.get('/hospital-today', verifyToken, getHospitalTodaysTokens);
  * @access  Private - Requires authentication
  */
 router.get('/doctor-today/:doctorId', verifyToken, getDoctorTodaysTokens);
+
+/**
+ * @route   PATCH /api/token/:id/status
+ * @desc    Update token status
+ * @access  Private - Requires authentication
+ */
+router.patch('/:id/status', verifyToken, updateTokenStatus);
 
 export default router;

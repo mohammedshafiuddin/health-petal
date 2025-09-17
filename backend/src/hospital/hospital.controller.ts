@@ -5,12 +5,15 @@ import {
   hospitalEmployeesTable,
   usersTable,
   doctorInfoTable,
-  doctorAvailabilityTable
+  doctorAvailabilityTable,
+  specializationsTable,
+  doctorSpecializationsTable
 } from "../db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { DESIGNATIONS } from "../lib/const-strings";
 import { imageUploadS3, generateSignedUrlsFromS3Urls } from "../lib/s3-client";
 import { ApiError } from "../lib/api-error";
+import { DoctorSpecialization } from "shared-types";
 
 /**
  * Create a new hospital
@@ -100,6 +103,36 @@ export const getHospitalById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Hospital not found" });
     }
 
+    // Get doctors working at this hospital
+    const hospitalDoctors = await db
+      .select({
+        userId: usersTable.id
+      })
+      .from(hospitalEmployeesTable)
+      .innerJoin(usersTable, eq(hospitalEmployeesTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(hospitalEmployeesTable.hospitalId, parseInt(id)),
+          eq(hospitalEmployeesTable.designation, DESIGNATIONS.DOCTOR)
+        )
+      );
+
+    // Get unique specializations from all doctors in this hospital
+    let specializations: any[] = [];
+    if (hospitalDoctors.length > 0) {
+      const doctorIds = hospitalDoctors.map(doctor => doctor.userId);
+      
+      specializations = await db
+        .selectDistinct({
+          id: specializationsTable.id,
+          name: specializationsTable.name,
+          description: specializationsTable.description
+        })
+        .from(doctorSpecializationsTable)
+        .innerJoin(specializationsTable, eq(doctorSpecializationsTable.specializationId, specializationsTable.id))
+        .where(sql`${doctorSpecializationsTable.doctorId} IN (${sql.join(doctorIds, sql`, `)})`);
+    }
+
     // Convert comma-separated image URLs to signed URLs
     let signedImageUrls: string[] = [];
     if (hospital.hospitalImages) {
@@ -110,11 +143,12 @@ export const getHospitalById = async (req: Request, res: Response) => {
     return res.status(200).json({
       hospital: {
         ...hospital,
-        hospitalImages: signedImageUrls
+        hospitalImages: signedImageUrls,
+        specializations
       }
     });
 
-};
+};;
 
 /**
  * Update a hospital
@@ -282,6 +316,89 @@ export const deleteHospital = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Delete hospital error:", error);
     return res.status(500).json({ error: "Failed to delete hospital" });
+  }
+};
+
+/**
+ * Get hospital doctors with their specializations
+ */
+export const getHospitalDoctors = async (req: Request, res: Response) => {
+  try {
+    const { hospitalId } = req.params;
+    const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+    // Validate hospital ID
+    if (!hospitalId) {
+      return res.status(400).json({ error: "Hospital ID is required" });
+    }
+
+    // Get doctors working at this hospital
+    const hospitalDoctors = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        profilePicUrl: usersTable.profilePicUrl,
+        qualifications: doctorInfoTable.qualifications,
+        dailyTokenCount: doctorInfoTable.dailyTokenCount,
+        consultationFee: doctorInfoTable.consultationFee
+      })
+      .from(hospitalEmployeesTable)
+      .innerJoin(usersTable, eq(hospitalEmployeesTable.userId, usersTable.id))
+      .innerJoin(doctorInfoTable, eq(usersTable.id, doctorInfoTable.userId))
+      .where(
+        and(
+          eq(hospitalEmployeesTable.hospitalId, parseInt(hospitalId)),
+          eq(hospitalEmployeesTable.designation, DESIGNATIONS.DOCTOR)
+        )
+      );
+
+    // Fetch all doctor IDs for efficient querying
+    const doctorIds = hospitalDoctors.map((doctor) => doctor.id);
+
+    // Early return if no doctors found
+    if (doctorIds.length === 0) {
+      return res.status(200).json({
+        doctors: []
+      });
+    }
+
+    // Get specializations for all doctors
+    const doctorSpecializations = await db
+      .select({
+        doctorId: doctorSpecializationsTable.doctorId,
+        specializationId: doctorSpecializationsTable.specializationId,
+        name: specializationsTable.name,
+        description: specializationsTable.description
+      })
+      .from(doctorSpecializationsTable)
+      .innerJoin(specializationsTable, eq(doctorSpecializationsTable.specializationId, specializationsTable.id))
+      .where(sql`${doctorSpecializationsTable.doctorId} IN (${sql.join(doctorIds, sql`, `)})`);
+
+    // Group specializations by doctor ID
+    const specializationsByDoctor: Record<number, DoctorSpecialization[]> = {};
+    doctorSpecializations.forEach(spec => {
+      if (!specializationsByDoctor[spec.doctorId]) {
+        specializationsByDoctor[spec.doctorId] = [];
+      }
+      specializationsByDoctor[spec.doctorId].push({
+        id: spec.specializationId,
+        name: spec.name,
+        description: spec.description,
+      });
+    });
+
+    // Add specializations to each doctor
+    const doctorsWithSpecializations = hospitalDoctors.map(doctor => ({
+      ...doctor,
+      specializations: specializationsByDoctor[doctor.id] || []
+    }));
+
+    return res.status(200).json({
+      doctors: doctorsWithSpecializations
+    });
+  } catch (error) {
+    console.error("Get hospital doctors error:", error);
+    return res.status(500).json({ error: "Failed to fetch hospital doctors" });
   }
 };
 

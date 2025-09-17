@@ -11,6 +11,8 @@ export interface User {
   email: string;
   mobile: string;
   profilePicUrl?: string;
+  address?: string;
+  joinDate?: Date;
   specializations: DoctorSpecialization[] | null;
 }
 
@@ -45,6 +47,7 @@ export interface Doctor {
   mobile?: string;
   doctorInfo?: DoctorInfo;
   specializations?: DoctorSpecialization[] | null;
+  qualifications: string;
 }
 
 // Token types
@@ -74,6 +77,16 @@ export interface PastToken {
   doctor: TokenDoctor;
   status?: 'COMPLETED' | 'MISSED' | 'CANCELLED';
   consultationNotes?: string | null;
+}
+
+export interface UpcomingAppointment {
+  id: number;
+  doctorName: string;
+  doctorImageUrl?: string;
+  date: string;
+  hospital: string;
+  queueNumber: number;
+  status: string;
 }
 
 export interface MyTokensResponse {

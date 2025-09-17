@@ -653,6 +653,114 @@ export const getHospitalTodaysTokens = async (req: Request, res: Response, next:
 };
 
 /**
+ * Update token status
+ * 
+ * @param req Request object containing token ID and status
+ * @param res Response object
+ * @param next Next function
+ */
+export const updateTokenStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const tokenId = parseInt(req.params.id);
+    const { status, consultationNotes } = req.body;
+    const userId = req.user?.userId;
+
+    // Validate token ID
+    if (isNaN(tokenId)) {
+      throw new ApiError("Invalid token ID", 400);
+    }
+
+    // Validate required fields
+    if (!status && !consultationNotes) {
+      throw new ApiError("Status or consultation notes are required", 400);
+    }
+
+    // Validate status if provided
+    const validStatuses = ['UPCOMING', 'IN_PROGRESS', 'COMPLETED', 'MISSED', 'CANCELLED'];
+    if (status && !validStatuses.includes(status)) {
+      throw new ApiError("Invalid status. Must be one of: UPCOMING, IN_PROGRESS, COMPLETED, MISSED, CANCELLED", 400);
+    }
+
+    // Check if token exists
+    const token = await db.query.tokenInfoTable.findFirst({
+      where: eq(tokenInfoTable.id, tokenId),
+    });
+
+    if (!token) {
+      throw new ApiError("Token not found", 404);
+    }
+
+    // Check if user is authorized to update this token
+    // Either the user is the doctor for this token or a hospital admin
+    const isDoctor = token.doctorId === userId;
+    
+    let isHospitalAdmin = false;
+    if (!isDoctor) {
+      // Check if user is a hospital admin where the doctor works
+      const doctorInSameHospital = await db.query.hospitalEmployeesTable.findFirst({
+        where: and(
+          eq(hospitalEmployeesTable.userId, token.doctorId)
+        ),
+      });
+      
+      if (doctorInSameHospital) {
+        const userHospital = await db.query.hospitalEmployeesTable.findFirst({
+          where: and(
+            eq(hospitalEmployeesTable.userId, userId),
+            eq(hospitalEmployeesTable.hospitalId, doctorInSameHospital.hospitalId)
+          ),
+        });
+        
+        isHospitalAdmin = !!userHospital;
+      }
+    }
+    
+    if (!isDoctor && !isHospitalAdmin) {
+      throw new ApiError("Not authorized to update this token", 403);
+    }
+
+    // Update token status
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (consultationNotes) updateData.consultationNotes = consultationNotes;
+
+    const [updatedToken] = await db
+      .update(tokenInfoTable)
+      .set(updateData)
+      .where(eq(tokenInfoTable.id, tokenId))
+      .returning();
+
+    // If status is being set to COMPLETED or MISSED, update doctor's consultation count
+    if (status === 'COMPLETED' || status === 'MISSED') {
+      // Get doctor's availability for this date
+      const availability = await db.query.doctorAvailabilityTable.findFirst({
+        where: and(
+          eq(doctorAvailabilityTable.doctorId, token.doctorId),
+          eq(doctorAvailabilityTable.date, token.tokenDate)
+        ),
+      });
+      
+      if (availability) {
+        // Update consultationsDone count
+        await db
+          .update(doctorAvailabilityTable)
+          .set({
+            consultationsDone: availability.consultationsDone + 1
+          })
+          .where(eq(doctorAvailabilityTable.id, availability.id));
+      }
+    }
+
+    return res.status(200).json({
+      message: "Token updated successfully",
+      token: updatedToken
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get today's tokens for a specific doctor
  * 
  * @param req Request object containing doctorId

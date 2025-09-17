@@ -1,6 +1,6 @@
 import axios from "@/services/axios";
-import { useQuery, useMutation, QueryClient } from "@tanstack/react-query";
-import type { User } from "shared-types";
+import { useQuery, useMutation, QueryClient, useQueryClient } from "@tanstack/react-query";
+import type { User, UpcomingAppointment } from "shared-types";
 
 export interface CreateUserPayload {
   name: string;
@@ -28,6 +28,23 @@ export interface UserResponsibilities {
   secretaryFor: number[]; // IDs of doctors the user is secretary for
 }
 
+export interface UpdateBusinessUserPayload {
+  name: string;
+  password?: string; // Optional for updates
+  specializationIds?: number[];
+  consultationFee?: number;
+  dailyTokenCount?: number;
+  qualifications?: string;
+}
+
+export interface UpdateUserProfilePayload {
+  name?: string;
+  email?: string;
+  mobile?: string;
+  address?: string;
+  profilePicUrl?: string;
+}
+
 export function useGetUserById(userId: number | string | undefined | null) {
   
   return useQuery<User | undefined>({
@@ -48,29 +65,9 @@ export function useUserResponsibilities() {
   return useQuery({
     queryKey: ['userResponsibilities'],
     queryFn: async (): Promise<UserResponsibilities> => {
-      const response = await axios.get('/users/responsibilities');
+      const response = await axios.get<UserResponsibilities>('/users/responsibilities');
       return response.data;
-    },
-    enabled: false, // Don't run automatically, manually trigger when needed
-  });
-}
-
-export function useCreateUser() {
-  return useMutation({
-    mutationFn: async (userPayload: FormData) => {
-      try {
-
-        const response = await axios.post('/users/signup', userPayload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        return response.data;
-      }
-      catch (error) {
-        console.log(error);
-      }
-    },
+    }
   });
 }
 
@@ -100,15 +97,6 @@ export interface BusinessUser {
   username: string;
   role: string;
   joinDate: string;
-}
-
-export interface UpdateBusinessUserPayload {
-  name: string;
-  password?: string; // Optional for updates
-  specializationIds?: number[];
-  consultationFee?: number;
-  dailyTokenCount?: number;
-  qualifications?: string;
 }
 
 export function useUpdateBusinessUser(userId: number) {
@@ -143,5 +131,36 @@ export function useGetBusinessUsers() {
       const response = await axios.get<BusinessUser[]>('/users/business-users');
       return response.data;
     }
+  });
+}
+
+/**
+ * Hook to update a user's profile
+ */
+export function useUpdateUserProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ userId, userData }: { userId: number, userData: UpdateUserProfilePayload }) => {
+      const response = await axios.put<User>(`/users/${userId}`, userData);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries({ queryKey: ['user', 'user-details', variables.userId] });
+    },
+  });
+}
+
+/**
+ * Hook to fetch the current user's upcoming appointments
+ */
+export function useUserUpcomingAppointments() {
+  return useQuery<UpcomingAppointment[]>({
+    queryKey: ['user-upcoming-appointments'],
+    queryFn: async () => {
+      const response = await axios.get<{ appointments: UpcomingAppointment[] }>('/users/upcoming-tokens');
+      return response.data.appointments;
+    },
   });
 }

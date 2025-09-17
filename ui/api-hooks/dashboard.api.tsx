@@ -32,6 +32,10 @@ interface FeaturedDoctor {
   } | null;
 }
 
+interface AppointmentScreenDoctor extends FeaturedDoctor {
+  // Same structure as FeaturedDoctor for now
+}
+
 export function useFeaturedDoctors(limit: number = 5) {
   return useQuery<FeaturedDoctor[]>({
     queryKey: ['featuredDoctors', limit],
@@ -47,6 +51,18 @@ export function useFeaturedHospitals(limit: number = 5) {
     queryKey: ['featuredHospitals', limit],
     queryFn: async () => {
       const res = await axios.get<Hospital[]>(`/dashboard/featured-hospitals?limit=${limit}`);
+      return res.data;
+    },
+  });
+}
+
+export function useAppointmentScreenDoctors(searchQuery: string = '', limit: number = 20, offset: number = 0) {
+  return useQuery<AppointmentScreenDoctor[]>({
+    queryKey: ['appointmentScreenDoctors', searchQuery, limit, offset],
+    queryFn: async () => {
+      const res = await axios.get<AppointmentScreenDoctor[]>(
+        `/dashboard/appointments-screen?search=${encodeURIComponent(searchQuery)}&limit=${limit}&offset=${offset}`
+      );
       return res.data;
     },
   });

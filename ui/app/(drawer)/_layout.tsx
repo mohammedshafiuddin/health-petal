@@ -38,6 +38,7 @@ import { useCurrentUserId } from "@/hooks/useCurrentUserId";
 import { useGetUserById } from "../../api-hooks/user.api";
 import { useGetMyDoctors } from "@/api-hooks/my-doctors.api";
 import { ROLE_NAMES } from "@/lib/constants";
+import DashboardHeader from "@/components/dashboard-header";
 
 interface Props {}
 
@@ -56,67 +57,39 @@ function _layout(props: Props) {
     // refreshRoles();
   }, []);
 
-  const spinAnim = React.useRef(new Animated.Value(0)).current;
   const [spinning, setSpinning] = React.useState(false);
 
   const handleRefersh = () => {
-    // if (spinning) return;
-    // setSpinning(true);
-    // Animated.timing(spinAnim, {
-    //   toValue: 1,
-    //   duration: 600,
-    //   easing: Easing.linear,
-    //   useNativeDriver: true,
-    // }).start(() => {
-    //   spinAnim.setValue(0);
-    //   setSpinning(false);
+    setSpinning(true);
     queryClient.clear();
     queryClient.removeQueries();
     queryClient.resetQueries({
       exact: false,
       type: "all",
     });
-    // setCount((val) => val + 1);
-    //   emitRefreshEvent();
-    // });
+    // Simulate async operation
+    setTimeout(() => {
+      setSpinning(false);
+    }, 1000);
   };
 
-  const spin = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
   return (
-    <View style={{ flexGrow: 1, backgroundColor: "#fff" }}>
-      <Drawer
-        drawerContent={(props) => <CustomDrawerContent {...props} />}
-        screenOptions={{
-          headerShown: true,
-          headerRight: () => (
-            <View style={tw`flex flex-row`}>
-              <View style={tw`-mr-4`}>
-                <IconButton
-                  icon="bell"
-                  size={24}
-                  accessibilityLabel="Notifications"
-                  onPress={() => router.push("/(drawer)/notifications" as any)}
-                  iconColor={colors.blue1}
-                />
-              </View>
-              <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <IconButton
-                  icon="refresh"
-                  size={24}
-                  onPress={handleRefersh}
-                  accessibilityLabel="Refresh"
-                  disabled={spinning}
-                  iconColor={colors.blue1}
-                />
-              </Animated.View>
-            </View>
-          ),
-        }}
-      >
+    <View style={{ flexGrow: 1, backgroundColor: theme.colors.gray3 }}>
+              <Drawer
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          screenOptions={({ navigation }) => ({
+            headerShown: true,
+            header: () => (
+              <DashboardHeader
+                onMenuPress={() => navigation.toggleDrawer()}
+                onNotificationsPress={() => router.push("/(drawer)/notifications" as any)}
+                onProfilePress={() => router.push("/(drawer)/my-profile" as any)}
+                onRefreshPress={handleRefersh}
+                refreshing={spinning}
+              />
+            ),
+          })}
+        >
         <Drawer.Screen
           name="index"
           options={{
@@ -364,6 +337,7 @@ function CustomDrawerContent(props: any) {
     "signup",
     "payment-successful",
     "payment-failed",
+    "appointments",
   ];
   const adminOnlyRoutes = ["admin-panel"];
   const genUserOnlyRoutes = ["my-tokens"];
@@ -389,131 +363,145 @@ function CustomDrawerContent(props: any) {
     <View style={{ flex: 1 }}>
       <DrawerContentScrollView
         {...props}
-        style={{ height: "100%", backgroundColor: "#fff" }}
+        style={{ height: "100%", backgroundColor: theme.colors.white1 }}
       >
+        {/* User Profile Section */}
         {user && (
-          <View
+          <View 
             style={{
               flexDirection: "row",
               alignItems: "center",
-              height: 96,
               backgroundColor: theme.colors.blue1,
-              borderRadius: 4,
-              paddingVertical: 8,
+              paddingVertical: 16,
               paddingHorizontal: 16,
-              paddingBottom: 16,
+              borderBottomRightRadius: 16,
+              borderBottomLeftRadius: 16,
+              marginBottom: 16,
             }}
           >
             {user.profilePicUrl ? (
               <Image
                 source={{ uri: user.profilePicUrl }}
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 48,
-                  marginRight: 10,
-                  borderWidth: 1,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  marginRight: 12,
+                  borderWidth: 2,
                   borderColor: "#fff",
                 }}
               />
             ) : (
               <View
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 48,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
                   alignItems: "center",
                   justifyContent: "center",
-                  marginRight: 10,
+                  marginRight: 12,
+                  borderWidth: 2,
                   borderColor: "#fff",
+                  backgroundColor: theme.colors.blue2,
                 }}
               >
-                <MyText weight="bold" color="white1" style={{ fontSize: 32 }}>
+                <MyText weight="bold" color="white1" style={{ fontSize: 24 }}>
                   {user.name?.[0] || "?"}
                 </MyText>
               </View>
             )}
             <View>
-              <MyText weight="bold" color="white1" style={{ fontSize: 18 }}>
+              <MyText weight="bold" color="white1" style={{ fontSize: 18, marginBottom: 4 }}>
                 {user.name}
               </MyText>
-              <MyText color="white1" style={{ fontSize: 12 }}>
+              <MyText color="white1" style={{ fontSize: 14, opacity: 0.9 }}>
                 {user.mobile}
               </MyText>
             </View>
           </View>
         )}
-        {props.state.routes.map((route: any, index: any) => {
-          const { options } = props.descriptors[route.key];
-          const isFocused = props.state.index === index;
-          if (
-            hiddenRoutes.includes(route.name) ||
-            (!isAdmin && adminOnlyRoutes.includes(route.name)) ||
-            (genUserOnlyRoutes.includes(route.name) && !isGenUser) ||
-            (hostpitalAdminOnlyRoutes.includes(route.name) && !isHospitalAdmin)
-          ) {
-            return null;
-          }
-          return (
-            <React.Fragment key={route.key}>
-              <DrawerItem
-                key={index}
-                label={({
-                  focused,
-                  color,
-                }: {
-                  focused: boolean;
-                  color: string;
-                }) => {
-                  return (
-                    <View
-                      style={{
-                        flex: 1,
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <MyText
-                        weight={focused ? "bold" : "light"}
-                        color={focused ? "blue1" : "gray1"}
+        
+        {/* Navigation Items */}
+        <View style={{ paddingHorizontal: 8 }}>
+          {props.state.routes.map((route: any, index: any) => {
+            const { options } = props.descriptors[route.key];
+            const isFocused = props.state.index === index;
+            if (
+              hiddenRoutes.includes(route.name) ||
+              (!isAdmin && adminOnlyRoutes.includes(route.name)) ||
+              (genUserOnlyRoutes.includes(route.name) && !isGenUser) ||
+              (hostpitalAdminOnlyRoutes.includes(route.name) && !isHospitalAdmin)
+            ) {
+              return null;
+            }
+            return (
+              <React.Fragment key={route.key}>
+                <DrawerItem
+                  key={index}
+                  label={({
+                    focused,
+                    color,
+                  }: {
+                    focused: boolean;
+                    color: string;
+                  }) => {
+                    return (
+                      <View
+                        style={{
+                          flex: 1,
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
                       >
-                        {options.title}
-                      </MyText>
-                      <MaterialIcons
-                        name="chevron-right"
-                        color={
-                          focused ? theme.colors.blue1 : theme.colors.gray1
-                        }
-                        size={24}
-                        weight={focused ? "700" : "400"}
-                      />
+                        <MyText
+                          weight={focused ? "bold" : "regular"}
+                          color={focused ? "blue1" : "gray1"}
+                          style={{ fontSize: 16 }}
+                        >
+                          {options.title}
+                        </MyText>
+                        <MaterialIcons
+                          name="chevron-right"
+                          color={
+                            focused ? theme.colors.blue1 : theme.colors.gray1
+                          }
+                          size={20}
+                        />
+                      </View>
+                    );
+                  }}
+                  onPress={() => props.navigation.navigate(route.name)}
+                  focused={isFocused}
+                  activeBackgroundColor={theme.colors.blue3}
+                  inactiveBackgroundColor={theme.colors.white1}
+                  icon={({ color, focused, size }) => (
+                    <View style={{ marginRight: 12 }}>
+                      {options.drawerIcon({ color, focused, size })}
                     </View>
-                  );
-                }}
-                onPress={() => props.navigation.navigate(route.name)}
-                focused={isFocused}
-                activeBackgroundColor={theme.colors.white1}
-                icon={options.drawerIcon}
-              />
-              <View style={{ opacity: 0.5 }}>
-                {/* <HorizSeparator verticalGap={2} /> */}
-              </View>
-            </React.Fragment>
-          );
-        })}
+                  )}
+                  style={{
+                    borderRadius: 8,
+                    marginHorizontal: 8,
+                    marginVertical: 2,
+                  }}
+                />
+              </React.Fragment>
+            );
+          })}
+        </View>
 
         {/* My Doctors Section */}
         {shouldFetchMyDoctors && myDoctors && myDoctors.length > 0 && (
-          <View style={{ marginTop: 10 }}>
+          <View style={{ marginTop: 16, paddingHorizontal: 8 }}>
             <View
               style={{
                 paddingHorizontal: 16,
                 paddingVertical: 8,
-                backgroundColor: theme.colors.gray3,
                 marginBottom: 8,
               }}
             >
-              <MyText weight="bold" color="blue1">
+              <MyText weight="bold" color="blue1" style={{ fontSize: 16 }}>
                 My Doctors
               </MyText>
             </View>
@@ -521,13 +509,7 @@ function CustomDrawerContent(props: any) {
             {myDoctors.map((doctor) => (
               <DrawerItem
                 key={`doctor-${doctor.id}`}
-                label={({
-                  focused,
-                  color,
-                }: {
-                  focused: boolean;
-                  color: string;
-                }) => (
+                label={({ focused, color }: { focused: boolean; color: string }) => (
                   <View
                     style={{
                       flex: 1,
@@ -536,20 +518,18 @@ function CustomDrawerContent(props: any) {
                       justifyContent: "space-between",
                     }}
                   >
-                    <View
-                      style={{ flexDirection: "row", alignItems: "center" }}
-                    >
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
                       <MaterialIcons
                         name="person"
                         color={theme.colors.blue1}
                         size={18}
-                        style={{ marginRight: 8 }}
+                        style={{ marginRight: 12 }}
                       />
                       <MyText
-                        weight={focused ? "bold" : "light"}
+                        weight={focused ? "bold" : "regular"}
                         color={focused ? "blue1" : "gray1"}
                         numberOfLines={1}
-                        style={{ maxWidth: 150 }}
+                        style={{ fontSize: 16, maxWidth: 150 }}
                       >
                         {doctor.name}
                       </MyText>
@@ -566,28 +546,40 @@ function CustomDrawerContent(props: any) {
                     `/(drawer)/dashboard/doctor-details/${doctor.id}` as any
                   )
                 }
-                activeBackgroundColor={theme.colors.white1}
+                activeBackgroundColor={theme.colors.blue3}
+                inactiveBackgroundColor={theme.colors.white1}
+                style={{
+                  borderRadius: 8,
+                  marginHorizontal: 8,
+                  marginVertical: 2,
+                }}
               />
             ))}
           </View>
         )}
       </DrawerContentScrollView>
+      
+      {/* Logout Button */}
       <View
         style={{
-          padding: 16,
-          backgroundColor: theme.colors.white1,
+          padding: 12,
+          backgroundColor: theme.colors.gray3,
           borderTopWidth: 1,
-          borderTopColor: theme.colors.gray3,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
+          borderTopColor: theme.colors.gray2,
         }}
       >
         <MyButton
           onPress={() => logout({})}
-          style={{ flexGrow: 1, marginBottom: 16, marginHorizontal: 8 }}
+          style={{ 
+            backgroundColor: colors.red1,
+            borderRadius: 8,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+          }}
         >
-          Logout
+          <MyText weight="bold" color="white1" style={{ textAlign: "center" }}>
+            Logout
+          </MyText>
         </MyButton>
       </View>
     </View>
