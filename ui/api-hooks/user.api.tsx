@@ -58,6 +58,25 @@ export function useGetUserById(userId: number | string | undefined | null) {
   });
 }
 
+export function useCreateUser() {
+  return useMutation({
+    mutationFn: async (userPayload: FormData) => {
+      try {
+
+        const response = await axios.post('/users/signup', userPayload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        return response.data;
+      }
+      catch (error) {
+        console.log(error);
+      }
+    },
+  });
+}
+
 /**
  * Hook to fetch the responsibilities of the logged-in user
  */

@@ -5,6 +5,7 @@ import { DoctorTodayToken } from 'shared-types';
 import tw from '@/app/tailwind';
 import { Ionicons } from '@expo/vector-icons';
 import { useUpdateTokenStatus } from '@/api-hooks/token.api';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface DoctorTokenCardProps {
   token: DoctorTodayToken;
@@ -84,91 +85,108 @@ const DoctorTokenCard: React.FC<DoctorTokenCardProps> = ({ token, onMarkNoShow, 
   };
 
   return (
-    <View style={tw`bg-white p-4 rounded-xl shadow-sm mb-4 border-l-4 ${
+    <View style={tw`bg-white p-5 rounded-2xl shadow-lg mb-4 border-l-4 ${
       token.status === 'COMPLETED' ? 'border-green-500' : 
       token.status === 'IN_PROGRESS' ? 'border-orange-500' : 
       token.status === 'UPCOMING' ? 'border-blue-500' : 
       token.status === 'MISSED' ? 'border-red-500' : 'border-gray-500'
     }`}>
-      <View style={tw`flex-row justify-between items-start mb-2`}>
+      <View style={tw`flex-row justify-between items-start mb-3`}>
         <View style={tw`flex-1`}>
           <View style={tw`flex-row items-center`}>
-            <MyText style={tw`text-lg font-bold`}>Token #{token.queueNumber}</MyText>
+            <MyText style={tw`text-xl font-bold text-gray-800`}>Token #{token.queueNumber}</MyText>
             {isPriority && (
-              <View style={tw`ml-2 bg-red-500 px-2 py-1 rounded-full flex-row items-center`}>
-                <Ionicons name="alert-circle" size={12} color="white" />
+              <LinearGradient 
+                colors={['#ef4444', '#dc2626']} 
+                style={tw`ml-3 px-3 py-1 rounded-full flex-row items-center`}
+              >
+                <Ionicons name="alert-circle" size={14} color="white" />
                 <MyText style={tw`text-white text-xs font-bold ml-1`}>URGENT</MyText>
-              </View>
+              </LinearGradient>
             )}
             {isFollowUp && (
-              <View style={tw`ml-2 bg-purple-500 px-2 py-1 rounded-full`}>
+              <LinearGradient 
+                colors={['#8b5cf6', '#7c3aed']} 
+                style={tw`ml-3 px-3 py-1 rounded-full`}
+              >
                 <MyText style={tw`text-white text-xs font-bold`}>FOLLOW-UP</MyText>
-              </View>
+              </LinearGradient>
             )}
           </View>
-          <MyText style={tw`text-gray-600`}>{token.patientName}</MyText>
+          <MyText style={tw`text-gray-700 font-medium mt-1`}>{token.patientName}</MyText>
           <MyText style={tw`text-gray-500 text-sm`}>{token.patientMobile}</MyText>
         </View>
-        <View style={tw`${statusColorClass.split(' ')[0]} px-3 py-1 rounded-full`}>
-          <MyText style={tw`${statusColorClass.split(' ')[1]} text-xs font-medium`}>
+        <LinearGradient 
+          colors={
+            token.status === 'COMPLETED' ? ['#10b981', '#059669'] :
+            token.status === 'IN_PROGRESS' ? ['#f97316', '#ea580c'] :
+            token.status === 'UPCOMING' ? ['#3b82f6', '#2563eb'] :
+            token.status === 'MISSED' ? ['#ef4444', '#dc2626'] :
+            ['#6b7280', '#4b5563']
+          } 
+          style={tw`px-4 py-2 rounded-full`}
+        >
+          <MyText style={tw`text-white text-xs font-bold`}>
             {token.status ?? 'N/A'}
           </MyText>
-        </View>
+        </LinearGradient>
       </View>
       {token.description && (
-        <View style={tw`mt-2 p-2 bg-gray-50 rounded`}>
+        <View style={tw`mt-3 p-3 bg-gray-50 rounded-xl`}>
           <MyText style={tw`text-gray-700 text-sm`}>
-            <MyText style={tw`font-medium`}>Description: </MyText>
+            <MyText style={tw`font-bold text-gray-800`}>Description: </MyText>
             {token.description}
           </MyText>
         </View>
       )}
       {showNotesInput ? (
-        <View style={tw`mt-2 p-2 bg-blue-50 rounded`}>
+        <View style={tw`mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200`}>
           <TextInput
-            style={tw`border border-gray-300 rounded p-2 mb-2`}
+            style={tw`border border-gray-300 rounded-xl p-3 mb-3 bg-white`}
             value={notesInput}
             onChangeText={setNotesInput}
             placeholder="Enter consultation notes"
             multiline
+            numberOfLines={3}
           />
           <View style={tw`flex-row justify-end`}>
             <MyText 
-              style={tw`text-gray-600 mr-4`}
+              style={tw`text-gray-600 mr-6 font-medium`}
               onPress={cancelNotes}
             >
               Cancel
             </MyText>
             <MyText 
-              style={tw`text-blue-600 font-medium`}
+              style={tw`text-blue-600 font-bold`}
               onPress={saveNotes}
             >
-              Save
+              Save Notes
             </MyText>
           </View>
         </View>
       ) : token.consultationNotes ? (
-        <View style={tw`mt-2 p-2 bg-blue-50 rounded`}>
+        <View style={tw`mt-3 p-3 bg-blue-50 rounded-xl`}>
           <MyText style={tw`text-blue-800 text-sm`}>
-            <MyText style={tw`font-medium`}>Notes: </MyText>
+            <MyText style={tw`font-bold text-blue-900`}>Notes: </MyText>
             {token.consultationNotes}
           </MyText>
         </View>
       ) : null}
       {/* Action buttons for doctors */}
       {token.status === 'UPCOMING' && (
-        <View style={tw`flex-row mt-3`}>
+        <View style={tw`flex-row mt-4 pt-4 border-t border-gray-100`}>
           <View style={tw`flex-1`}>
             <MyText 
-              style={tw`text-red-500 text-center text-sm underline`}
+              style={tw`text-red-500 text-center font-bold py-2`}
               onPress={handleMarkNoShow}
             >
               Mark as No Show
             </MyText>
           </View>
+          <View style={tw`h-6 w-px bg-gray-200 mx-2 self-center`} />
           <View style={tw`flex-1`}>
             <MyText 
-              style={tw`text-blue-500 text-center text-sm underline`}
+              style={tw`text-blue-600 text-center font-bold py-2`}
               onPress={handleAddNotes}
             >
               Add Notes
@@ -177,18 +195,19 @@ const DoctorTokenCard: React.FC<DoctorTokenCardProps> = ({ token, onMarkNoShow, 
         </View>
       )}
       {token.status === 'IN_PROGRESS' && (
-        <View style={tw`flex-row mt-3`}>
+        <View style={tw`flex-row mt-4 pt-4 border-t border-gray-100`}>
           <View style={tw`flex-1`}>
             <MyText 
-              style={tw`text-green-500 text-center text-sm underline`}
+              style={tw`text-green-600 text-center font-bold py-2`}
               onPress={() => updateTokenStatus({ tokenId: token.id, status: 'COMPLETED' })}
             >
               Mark as Completed
             </MyText>
           </View>
+          <View style={tw`h-6 w-px bg-gray-200 mx-2 self-center`} />
           <View style={tw`flex-1`}>
             <MyText 
-              style={tw`text-blue-500 text-center text-sm underline`}
+              style={tw`text-blue-600 text-center font-bold py-2`}
               onPress={handleAddNotes}
             >
               Add Notes

@@ -11,6 +11,7 @@ import { DoctorTokenSummary, DoctorTodayToken } from 'shared-types';
 import { Ionicons } from '@expo/vector-icons';
 import { ErrorToast } from '@/services/toaster';
 import DoctorTokenCard from './DoctorTokenCard';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Props {}
 
@@ -76,66 +77,74 @@ function Index(props: Props) {
     return (
         <AppContainer>
             <ScrollView
-                style={tw`flex-1`}
+                style={tw`flex-1 bg-gray-50`}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4361ee" />
                 }
             >
-                <View style={tw`p-4`}>
+                <View style={tw`p-5`}>
                     {/* Header with back button if doctor is selected */}
                     {selectedDoctorId ? (
-                        <View style={tw`mb-4`}>
+                        <View style={tw`mb-6`}>
                             <TouchableOpacity 
-                                style={tw`flex-row items-center`}
+                                style={tw`flex-row items-center w-32`}
                                 onPress={handleBackToSummary}
                             >
                                 <Ionicons name="arrow-back" size={24} color="#4361ee" />
-                                <MyText style={tw`ml-2 text-blue-600`}>Back to all doctors</MyText>
+                                <MyText style={tw`ml-2 text-blue-600 font-bold`}>All Doctors</MyText>
                             </TouchableOpacity>
-                            <MyText style={tw`text-2xl font-bold mt-2`}>
-                                {doctorTokensData?.doctorName}'s Tokens
-                            </MyText>
-                            <MyText style={tw`text-gray-500`}>
-                                {doctorTokensData?.date ? formatDate(doctorTokensData.date) : 'Today'}
-                            </MyText>
+                            <LinearGradient 
+                              colors={['#4361ee', '#3a0ca3']} 
+                              style={tw`p-5 rounded-2xl shadow-lg mt-4`}
+                            >
+                              <MyText style={tw`text-white text-2xl font-bold`}>
+                                  {doctorTokensData?.doctorName}'s Tokens
+                              </MyText>
+                              <MyText style={tw`text-blue-100`}>
+                                  {doctorTokensData?.date ? formatDate(doctorTokensData.date) : 'Today'}
+                              </MyText>
+                            </LinearGradient>
                         </View>
                     ) : (
-                        <View style={tw`mb-4`}>
-                            <MyText style={tw`text-2xl font-bold`}>Today's Tokens</MyText>
-                            <MyText style={tw`text-gray-500`}>
+                        <LinearGradient 
+                          colors={['#4361ee', '#3a0ca3']} 
+                          style={tw`p-5 rounded-2xl shadow-lg mb-6`}
+                        >
+                            <MyText style={tw`text-white text-2xl font-bold`}>Today's Tokens</MyText>
+                            <MyText style={tw`text-blue-100`}>
                                 {hospitalTokensData?.hospitalName || 'Your Hospital'} - {hospitalTokensData?.date ? formatDate(hospitalTokensData.date) : 'Today'}
                             </MyText>
-                        </View>
+                        </LinearGradient>
                     )}
                     
                     {/* Loading state */}
                     {(isLoadingHospital && !hospitalTokensData) || (selectedDoctorId && isLoadingDoctor && !doctorTokensData) ? (
-                        <View style={tw`items-center justify-center py-8`}>
+                        <View style={tw`items-center justify-center py-12`}>
                             <ActivityIndicator size="large" color="#4361ee" />
-                            <MyText style={tw`mt-4 text-gray-500`}>Loading tokens...</MyText>
+                            <MyText style={tw`mt-4 text-gray-600`}>Loading tokens...</MyText>
                         </View>
                     ) : isHospitalError && !selectedDoctorId ? (
-                        <View style={tw`bg-red-50 p-4 rounded-lg mb-4`}>
-                            <MyText style={tw`text-red-600`}>
+                        <View style={tw`bg-red-50 p-5 rounded-2xl shadow mb-4 border border-red-200`}>
+                            <MyText style={tw`text-red-700 font-medium`}>
                                 Error loading tokens: {hospitalError instanceof Error ? hospitalError.message : 'Unknown error'}
                             </MyText>
                             <TouchableOpacity 
-                                style={tw`bg-blue-500 px-4 py-2 rounded-lg mt-4 self-start`}
+                                style={tw`bg-blue-600 px-5 py-3 rounded-xl mt-4 self-start`}
                                 onPress={onRefresh}
                             >
-                                <MyText style={tw`text-white font-medium`}>Retry</MyText>
+                                <MyText style={tw`text-white font-bold`}>Retry</MyText>
                             </TouchableOpacity>
                         </View>
                     ) : isDoctorError && selectedDoctorId ? (
-                        <View style={tw`bg-red-50 p-4 rounded-lg mb-4`}>
-                            <MyText style={tw`text-red-600`}>
+                        <View style={tw`bg-red-50 p-5 rounded-2xl shadow mb-4 border border-red-200`}>
+                            <MyText style={tw`text-red-700 font-medium`}>
                                 Error loading doctor's tokens: {doctorError instanceof Error ? doctorError.message : 'Unknown error'}
                             </MyText>
                             <TouchableOpacity 
-                                style={tw`bg-blue-500 px-4 py-2 rounded-lg mt-4 self-start`}
+                                style={tw`bg-blue-600 px-5 py-3 rounded-xl mt-4 self-start`}
                                 onPress={onRefresh}
                             >
-                                <MyText style={tw`text-white font-medium`}>Retry</MyText>
+                                <MyText style={tw`text-white font-bold`}>Retry</MyText>
                             </TouchableOpacity>
                         </View>
                     ) : selectedDoctorId ? (
@@ -143,21 +152,24 @@ function Index(props: Props) {
                         <View>
                             {/* Current token indicator */}
                             {doctorTokensData?.currentTokenNumber && (
-                                <View style={tw`bg-blue-100 p-4 rounded-lg mb-4 flex-row justify-between items-center`}>
+                                <LinearGradient 
+                                  colors={['#3b82f6', '#2563eb']} 
+                                  style={tw`p-4 rounded-2xl shadow-lg mb-6 flex-row justify-between items-center`}
+                                >
                                     <View>
-                                        <MyText style={tw`text-blue-800 font-bold`}>
+                                        <MyText style={tw`text-white font-bold text-lg`}>
                                             Current Token: #{doctorTokensData.currentTokenNumber}
                                         </MyText>
-                                        <MyText style={tw`text-blue-700 text-sm`}>
+                                        <MyText style={tw`text-blue-100 mt-1`}>
                                             {doctorTokensData.completedTokens} of {doctorTokensData.totalTokens} completed
                                         </MyText>
                                     </View>
-                                    <View style={tw`bg-blue-500 px-3 py-1 rounded-full`}>
+                                    <View style={tw`bg-white bg-opacity-20 px-4 py-2 rounded-full`}>
                                         <MyText style={tw`text-white font-bold`}>
                                             IN PROGRESS
                                         </MyText>
                                     </View>
-                                </View>
+                                </LinearGradient>
                             )}
                             
                             {/* Doctor's tokens list */}
@@ -166,9 +178,9 @@ function Index(props: Props) {
                                     <DoctorTokenCard key={token.id} token={token} />
                                 ))
                             ) : (
-                                <View style={tw`bg-gray-100 p-6 rounded-lg items-center`}>
-                                    <Ionicons name="calendar-outline" size={48} color="#9ca3af" />
-                                    <MyText style={tw`text-center text-gray-500 mt-2`}>
+                                <View style={tw`bg-white p-8 rounded-2xl shadow-lg items-center`}>
+                                    <Ionicons name="calendar-outline" size={56} color="#9ca3af" />
+                                    <MyText style={tw`text-center text-gray-500 mt-4 text-lg`}>
                                         No tokens available for this doctor today.
                                     </MyText>
                                 </View>
@@ -180,13 +192,13 @@ function Index(props: Props) {
                             {hospitalTokensData?.doctors && hospitalTokensData.doctors.length > 0 ? (
                                 hospitalTokensData.doctors.map((doctor) => (
                                     <View key={doctor.id} style={tw`mb-8`}>
-                                      <View style={tw`flex-row items-center mb-2`}>
-                                        <MyText style={tw`text-lg font-bold mr-2`}>{doctor.name}</MyText>
+                                      <View style={tw`flex-row items-center mb-4`}>
+                                        <MyText style={tw`text-xl font-bold text-gray-800 mr-3`}>{doctor.name}</MyText>
                                         <TouchableOpacity
-                                          style={tw`bg-blue-500 px-3 py-1 rounded-full`}
+                                          style={tw`bg-blue-600 px-4 py-2 rounded-full shadow`}
                                           onPress={() => router.push('/(drawer)/todays-tokens/' + doctor.id as any)}
                                         >
-                                          <MyText style={tw`text-white text-xs font-medium`}>Show All</MyText>
+                                          <MyText style={tw`text-white text-xs font-bold`}>Show All</MyText>
                                         </TouchableOpacity>
                                       </View>
                                       {doctor.tokens && doctor.tokens.length > 0 ? (
@@ -199,9 +211,9 @@ function Index(props: Props) {
                                     </View>
                                 ))
                             ) : (
-                                <View style={tw`bg-gray-100 p-6 rounded-lg items-center`}>
-                                    <Ionicons name="medkit-outline" size={48} color="#9ca3af" />
-                                    <MyText style={tw`text-center text-gray-500 mt-2`}>
+                                <View style={tw`bg-white p-8 rounded-2xl shadow-lg items-center`}>
+                                    <Ionicons name="medkit-outline" size={56} color="#9ca3af" />
+                                    <MyText style={tw`text-center text-gray-500 mt-4 text-lg`}>
                                         No doctors with tokens available today.
                                     </MyText>
                                 </View>

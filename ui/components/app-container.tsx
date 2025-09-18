@@ -10,17 +10,16 @@ function AppContainer(props: Props) {
   const { children } = props;
 
   return (
-    <ScrollView style={tw`flex-1 bg-gray-50 dark:bg-gray-900 p-4`}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={tw`flex-1`}
-        keyboardVerticalOffset={80}
-      >
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={tw`flex-1 bg-gray-50 dark:bg-gray-900`}
+      keyboardVerticalOffset={80}
+    >
+      <ScrollView contentContainerStyle={tw`p-4 flex-grow`}>
         {children}
-      </KeyboardAvoidingView>
-
-      <View style={tw`h-16`}></View>
-    </ScrollView>
+        <View style={tw`h-16`}></View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

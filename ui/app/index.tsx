@@ -11,7 +11,7 @@ function Index(props: Props) {
     //     <Text>Hello WOrld</Text>
     // )
     return (
-        <Redirect href={`/(drawer)/login`} />
+        <Redirect href={`/login`} />
     )
 }
 

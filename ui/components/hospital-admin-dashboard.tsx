@@ -8,6 +8,7 @@ import { useHospitalAdminDashboard, Doctor } from '@/api-hooks/hospital.api'
 import { useHospitalTodaysTokens, useUpdateDoctorAvailability } from '@/api-hooks/token.api'
 import { ErrorToast, SuccessToast } from '@/services/toaster'
 import { useRouter } from 'expo-router'
+import { LinearGradient } from 'expo-linear-gradient'
 
 interface HospitalAdminDashboardProps {
   // Add any props you might need to pass to the dashboard
@@ -217,8 +218,8 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
         <MyText style={tw`text-red-500 text-lg mb-4`}>
           Error loading dashboard: {error?.message || 'Unknown error'}
         </MyText>
-        <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md`}>
-          <MyText style={tw`text-center`}>
+        <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-red-200 dark:border-red-800`}>
+          <MyText style={tw`text-center text-gray-700 dark:text-gray-300`}>
             We couldn't load your dashboard data. Please try again later.
           </MyText>
         </View>
@@ -233,59 +234,70 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
     return (
       <ThemedView style={tw`flex-1 justify-center items-center`}>
         <ActivityIndicator size="large" color="#0891b2" />
-        <MyText style={tw`mt-4 text-lg`}>Loading dashboardaa...</MyText>
+        <MyText style={tw`mt-4 text-lg text-gray-700 dark:text-gray-300`}>Loading dashboard...</MyText>
       </ThemedView>
     );
   }
 
   // Render dashboard with data
   return (
-    <ThemedView style={tw`flex-1`}>
+    <ThemedView style={tw`flex-1 bg-gray-50 dark:bg-gray-900`}>
       <ScrollView 
-        contentContainerStyle={tw`p-4`}
+        contentContainerStyle={tw`p-4 pt-6`}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0891b2" />
         }
       >
         {/* Hospital Info Card */}
-        <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-6`}>
-          <MyText style={tw`text-2xl font-bold mb-2`}>
+        <LinearGradient
+          colors={['#0d9488', '#0891b2']}
+          style={tw`p-6 rounded-2xl shadow-lg mb-6`}
+        >
+          <MyText style={tw`text-white text-2xl font-bold mb-2`}>
             {dashboardData.hospital.name}
           </MyText>
-          <MyText style={tw`text-gray-600 dark:text-gray-400 mb-4`}>
+          <MyText style={tw`text-cyan-100 mb-4`}>
             {dashboardData.hospital.address}
           </MyText>
           {dashboardData.hospital.description && (
-            <MyText style={tw`mb-2`}>
+            <MyText style={tw`text-white mb-2`}>
               {dashboardData.hospital.description}
             </MyText>
           )}
-        </View>
+          <View style={tw`mt-4 pt-4 border-t border-cyan-400 border-opacity-30`}>
+            <MyText style={tw`text-cyan-100 text-sm`}>
+              Today: {dashboardData.currentDate}
+            </MyText>
+          </View>
+        </LinearGradient>
 
         {/* Stats Summary */}
         <View style={tw`flex-row flex-wrap justify-between mb-6`}>
           <StatCard 
             title="Total Doctors" 
             value={dashboardData.totalDoctors} 
-            backgroundColor="bg-blue-100 dark:bg-blue-900"
+            colors={['#3b82f6', '#4f46e5']}
+            textColor="text-white"
           />
           <StatCard 
             title="Today's Appointments" 
             value={dashboardData.totalAppointmentsToday} 
-            backgroundColor="bg-green-100 dark:bg-green-900"
+            colors={['#10b981', '#0d9488']}
+            textColor="text-white"
           />
           <StatCard 
             title="Consultations Done" 
             value={dashboardData.totalConsultationsDone} 
-            backgroundColor="bg-purple-100 dark:bg-purple-900"
+            colors={['#8b5cf6', '#d946ef']}
+            textColor="text-white"
           />
         </View>
 
         {/* Doctors List */}
-        <MyText style={tw`text-xl font-bold mb-4`}>Doctors</MyText>
+        <MyText style={tw`text-xl font-bold mb-4 text-gray-800 dark:text-gray-200`}>Doctors</MyText>
         {dashboardData.doctors.length === 0 ? (
-          <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md`}>
-            <MyText style={tw`text-center`}>No doctors found for this hospital.</MyText>
+          <View style={tw`bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg`}>
+            <MyText style={tw`text-center text-gray-600 dark:text-gray-400`}>No doctors found for this hospital.</MyText>
           </View>
         ) : (
           dashboardData.doctors.map(doctor => (
@@ -312,14 +324,18 @@ const HospitalAdminDashboard: React.FC<HospitalAdminDashboardProps> = () => {
 interface StatCardProps {
   title: string;
   value: number;
-  backgroundColor: string;
+  colors: string[];
+  textColor?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, backgroundColor }) => (
-  <View style={tw`${backgroundColor} p-4 rounded-xl shadow-sm mb-4 w-[30%]`}>
-    <MyText style={tw`text-center text-3xl font-bold`}>{value}</MyText>
-    <MyText style={tw`text-center text-sm mt-1`}>{title}</MyText>
-  </View>
+const StatCard: React.FC<StatCardProps> = ({ title, value, colors, textColor = "text-white" }) => (
+  <LinearGradient
+    colors={colors}
+    style={tw`p-4 rounded-2xl shadow-lg mb-4 w-[31%]`}
+  >
+    <MyText style={tw`text-center text-3xl font-bold ${textColor}`}>{value}</MyText>
+    <MyText style={tw`text-center text-sm mt-1 ${textColor} opacity-90`}>{title}</MyText>
+  </LinearGradient>
 );
 
 // Doctor Card Component
@@ -348,77 +364,78 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
   };
   
   return (
-  <View style={tw`bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md mb-4`}>
-    <View style={tw`flex-row justify-between items-center mb-2`}>
+  <View style={tw`bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg mb-5 border border-gray-100 dark:border-gray-700`}>
+    <View style={tw`flex-row justify-between items-start mb-3`}>
       <TouchableOpacity onPress={navigateToDoctorDetails}>
         <MyText style={tw`text-lg font-bold text-blue-600 dark:text-blue-400`}>{doctor.name}</MyText>
       </TouchableOpacity>
-      <View style={tw`${doctor.isAvailable ? 'bg-green-100' : 'bg-red-100'} px-3 py-1 rounded-full`}>
-        <MyText style={tw`${doctor.isAvailable ? 'text-green-800' : 'text-red-800'} text-xs font-medium`}>
+      <View style={tw`${doctor.isAvailable ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'} px-3 py-1 rounded-full`}>
+        <MyText style={tw`${doctor.isAvailable ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'} text-xs font-semibold`}>
           {doctor.isAvailable ? 'Available' : 'Unavailable'}
         </MyText>
       </View>
     </View>
     
     {doctor.qualifications && (
-      <MyText style={tw`text-gray-600 dark:text-gray-400 mb-3`}>
+      <MyText style={tw`text-gray-600 dark:text-gray-400 mb-4 italic`}>
         {doctor.qualifications}
       </MyText>
     )}
     
-    <View style={tw`flex-row flex-wrap justify-between mt-2`}>
+    <View style={tw`flex-row flex-wrap justify-between mt-3`}>
       {/* Tokens Issued with adjustment buttons */}
-      <View style={tw`mb-3 w-[48%]`}>
-        <MyText style={tw`text-xs text-gray-500 dark:text-gray-400`}>Tokens Issued</MyText>
-        <View style={tw`flex-row items-center mt-1`}>
+      <View style={tw`mb-4 w-[48%] bg-gray-50 dark:bg-gray-700 p-3 rounded-xl`}>
+        <MyText style={tw`text-xs text-gray-500 dark:text-gray-400 mb-2`}>Tokens Issued</MyText>
+        <View style={tw`flex-row items-center justify-between`}>
           <TouchableOpacity
-            style={tw`w-8 h-8 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'} rounded-full items-center justify-center ${doctor.tokensIssuedToday <= 0 ? 'opacity-50' : ''}`}
+            style={tw`w-10 h-10 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-600'} rounded-full items-center justify-center ${doctor.tokensIssuedToday <= 0 ? 'opacity-50' : ''}`}
             onPress={() => onAdjustTokens(doctor, false)}
             disabled={isUpdating || doctor.tokensIssuedToday <= 0}
           >
-            <MyText style={tw`text-lg font-bold`}>-</MyText>
+            <MyText style={tw`text-xl font-bold text-gray-700 dark:text-gray-300`}>-</MyText>
           </TouchableOpacity>
-          <View style={tw`flex-row items-center mx-3 min-w-[24px] justify-center`}>
-            <MyText style={tw`text-sm font-medium`}>
+          <View style={tw`flex-row items-center min-w-[30px] justify-center`}>
+            <MyText style={tw`text-lg font-bold text-gray-800 dark:text-gray-200`}>
               {optimisticValues?.tokensIssued !== undefined 
                 ? optimisticValues.tokensIssued 
                 : doctor.tokensIssuedToday}
+              <MyText style={tw`text-sm font-normal text-gray-500 dark:text-gray-400`}>/{doctor.totalTokenCount}</MyText>
             </MyText>
           </View>
           <TouchableOpacity
-            style={tw`w-8 h-8 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'} rounded-full items-center justify-center ${doctor.tokensIssuedToday >= doctor.totalTokenCount ? 'opacity-50' : ''}`}
+            style={tw`w-10 h-10 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-600'} rounded-full items-center justify-center ${doctor.tokensIssuedToday >= doctor.totalTokenCount ? 'opacity-50' : ''}`}
             onPress={() => onAdjustTokens(doctor, true)}
             disabled={isUpdating || doctor.tokensIssuedToday >= doctor.totalTokenCount}
           >
-            <MyText style={tw`text-lg font-bold`}>+</MyText>
+            <MyText style={tw`text-xl font-bold text-gray-700 dark:text-gray-300`}>+</MyText>
           </TouchableOpacity>
         </View>
       </View>
       
       {/* Consultations Done with adjustment buttons */}
-      <View style={tw`mb-3 w-[48%]`}>
-        <MyText style={tw`text-xs text-gray-500 dark:text-gray-400`}>Consultations Done</MyText>
-        <View style={tw`flex-row items-center mt-1`}>
+      <View style={tw`mb-4 w-[48%] bg-gray-50 dark:bg-gray-700 p-3 rounded-xl`}>
+        <MyText style={tw`text-xs text-gray-500 dark:text-gray-400 mb-2`}>Consultations Done</MyText>
+        <View style={tw`flex-row items-center justify-between`}>
           <TouchableOpacity
-            style={tw`w-8 h-8 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'} rounded-full items-center justify-center ${doctor.consultationsDone <= 0 ? 'opacity-50' : ''}`}
+            style={tw`w-10 h-10 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-600'} rounded-full items-center justify-center ${doctor.consultationsDone <= 0 ? 'opacity-50' : ''}`}
             onPress={() => onAdjustConsultations(doctor, false)}
             disabled={isUpdating || doctor.consultationsDone <= 0}
           >
-            <MyText style={tw`text-lg font-bold`}>-</MyText>
+            <MyText style={tw`text-xl font-bold text-gray-700 dark:text-gray-300`}>-</MyText>
           </TouchableOpacity>
-          <View style={tw`flex-row items-center mx-3 min-w-[24px] justify-center`}>
-            <MyText style={tw`text-sm font-medium`}>
+          <View style={tw`flex-row items-center min-w-[30px] justify-center`}>
+            <MyText style={tw`text-lg font-bold text-gray-800 dark:text-gray-200`}>
               {optimisticValues?.consultationsDone !== undefined 
                 ? optimisticValues.consultationsDone 
                 : doctor.consultationsDone}
             </MyText>
           </View>
           <TouchableOpacity
-            style={tw`w-8 h-8 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'} rounded-full items-center justify-center`}
+            style={tw`w-10 h-10 ${isUpdating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-600'} rounded-full items-center justify-center`}
             onPress={() => onAdjustConsultations(doctor, true)}
             disabled={isUpdating}
           >
-            <MyText style={tw`text-lg font-bold`}>+</MyText>
+            <MyText style={tw`text-xl font-bold text-gray-700 dark:text-gray-300`}>+</MyText>
           </TouchableOpacity>
         </View>
       </View>
@@ -439,9 +456,9 @@ interface ConsultationInfoProps {
 }
 
 const ConsultationInfo: React.FC<ConsultationInfoProps> = ({ label, value, isPrice = false }) => (
-  <View style={tw`mb-2 ${isPrice ? 'w-full' : 'w-[30%]'}`}>
+  <View style={tw`mb-3 ${isPrice ? 'w-full' : 'w-[30%]'} bg-gray-50 dark:bg-gray-700 p-2 rounded-lg`}>
     <MyText style={tw`text-xs text-gray-500 dark:text-gray-400`}>{label}</MyText>
-    <MyText style={tw`text-sm font-medium`}>{value}</MyText>
+    <MyText style={tw`text-sm font-bold text-gray-800 dark:text-gray-200 mt-1`}>{value}</MyText>
   </View>
 );
 
