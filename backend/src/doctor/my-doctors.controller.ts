@@ -58,6 +58,7 @@ export const getMyDoctors = async (
             dailyTokenCount: doctorInfoTable.dailyTokenCount,
             consultationFee: doctorInfoTable.consultationFee,
           },
+          qualifications: doctorInfoTable.qualifications,
           specializations: sql<
             Array<{ id: number; name: string; description: string | null }>
           >`
@@ -96,6 +97,7 @@ export const getMyDoctors = async (
             username: usersTable.username,
             email: usersTable.email,
             mobile: usersTable.mobile,
+            qualifications: doctorInfoTable.qualifications,
             doctorInfo: {
               id: doctorInfoTable.id,
               qualifications: doctorInfoTable.qualifications,

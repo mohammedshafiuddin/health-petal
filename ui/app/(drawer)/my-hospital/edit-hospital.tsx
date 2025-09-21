@@ -6,7 +6,6 @@ import { ThemedView } from '@/components/ThemedView';
 import MyText from '@/components/text';
 import useHideDrawerHeader from '@/hooks/useHideDrawerHeader';
 import { useAuth } from '@/components/context/auth-context';
-import HospitalEditForm from '@/components/hospital-edit-form';
 import AppContainer from '@/components/app-container';
 import HospitalForm, { initialHospitalValues } from '@/components/hospital-form';
 

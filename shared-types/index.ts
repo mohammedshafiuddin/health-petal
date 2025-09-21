@@ -28,7 +28,7 @@ export interface Hospital {
 
 export interface DoctorSpecialization {
   id: number;
-  name: string;
+  name: string | null;
   description: string | null;
 }
 
@@ -47,7 +47,7 @@ export interface Doctor {
   mobile?: string;
   doctorInfo?: DoctorInfo;
   specializations?: DoctorSpecialization[] | null;
-  qualifications: string;
+  qualifications: string | null;
 }
 
 // Token types

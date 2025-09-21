@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AddBusinessUserForm from '@/components/add-business-user-form';
 import { useGetUserById } from '@/api-hooks/user.api';
 import { useDoctorSpecializations } from '@/api-hooks/doctor.api';
+import { MaterialIcons } from '@expo/vector-icons';
 
 function EditBusinessUser() {
   const router = useRouter();
@@ -25,18 +26,21 @@ function EditBusinessUser() {
 
   if (isLoading) {
     return (
-      <View style={tw`flex-1 justify-center items-center bg-white`}>
+      <View style={tw`flex-1 justify-center items-center bg-gray-50`}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <MyText style={tw`mt-4 text-gray-600`}>Loading user data...</MyText>
+        <MyText style={tw`mt-4 text-gray-600 font-medium`}>Loading user data...</MyText>
       </View>
     );
   }
 
   if (error || !user) {
     return (
-      <View style={tw`flex-1 justify-center items-center p-5 bg-white`}>
-        <MyText style={tw`text-red-500 text-lg mb-4`}>Error loading user</MyText>
-        <MyText style={tw`text-gray-600 mb-6`}>
+      <View style={tw`flex-1 justify-center items-center p-5 bg-gray-50`}>
+        <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
+          <MaterialIcons name="error" size={32} color="#ef4444" />
+        </View>
+        <MyText style={tw`text-red-600 text-lg font-bold mb-2`}>Error loading user</MyText>
+        <MyText style={tw`text-gray-600 text-center mb-6`}>
           {error?.message || 'User not found or could not be loaded.'}
         </MyText>
         <MyText 
@@ -50,14 +54,24 @@ function EditBusinessUser() {
   }
 
   return (
-    <ScrollView contentContainerStyle={tw`flex-grow p-5`} style={tw`bg-white`}>
+    <ScrollView contentContainerStyle={tw`flex-grow p-5`} style={tw`bg-gray-50`}>
       <View style={tw`flex-col gap-4`}>
-        <MyText style={tw`text-2xl font-bold mb-4 text-blue-900`}>Edit Business User</MyText>
-        <AddBusinessUserForm 
-          userData={userData} 
-          isEditing={true}
-          onSuccess={() => router.push("/(drawer)/admin-panel/manage-business-users")} 
-        />
+        <View style={tw`items-center mb-6`}>
+          <View style={tw`w-16 h-16 rounded-full bg-blue-100 items-center justify-center mb-4`}>
+            <MaterialIcons name="edit" size={32} color="#3b82f6" />
+          </View>
+          <MyText style={tw`text-2xl font-bold text-gray-800`}>Edit Business User</MyText>
+          <MyText style={tw`text-gray-600 text-center mt-2`}>
+            Update the details for {user.name}
+          </MyText>
+        </View>
+        <View style={tw`bg-white rounded-xl shadow-sm p-5 border border-gray-100`}>
+          <AddBusinessUserForm 
+            userData={userData} 
+            isEditing={true}
+            onSuccess={() => router.push("/(drawer)/admin-panel/manage-business-users")} 
+          />
+        </View>
       </View>
     </ScrollView>
   );

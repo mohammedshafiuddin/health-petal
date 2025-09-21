@@ -29,6 +29,8 @@ export default function EditProfile() {
   
   const [selectedImage, setSelectedImage] = useState<any>(null);
   
+  console.log({user})
+  
   // Use the image picker hook
   const pickImage = usePickImage({
     setFile: setSelectedImage,
@@ -69,13 +71,18 @@ export default function EditProfile() {
       });
       
       // Handle image upload
+      // if (false) {
       if (selectedImage) {
+
         formData.append('profilePic', {
           uri: selectedImage.uri,
-          type: selectedImage.type || 'image/jpeg',
-          name: selectedImage.name || `profile_${Date.now()}.jpg`,
+          type: selectedImage.mimeType || 'image/*',
+          name: selectedImage.fileName || `profile_${Date.now()}.jpg`,
         } as any);
       }
+
+      console.log({image: formData.get('profilePic'), selectedImage});
+      
       
       updateBusinessUser(
         formData,
@@ -86,6 +93,8 @@ export default function EditProfile() {
             ]);
           },
           onError: (error: any) => {
+            // console.log({error: JSON.stringify(error)});
+            
             Alert.alert('Error', error.message || 'Failed to update profile');
           }
         }

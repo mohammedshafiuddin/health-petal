@@ -8,6 +8,7 @@ import {
   CreateUserPayload,
   useCreateBusinessUser,
   CreateUserResponse,
+  useCreateUser,
 } from "@/api-hooks/user.api";
 import { useRouter } from "expo-router";
 import { Formik } from "formik";
@@ -49,7 +50,7 @@ function Index(props: Props) {
     mutate: createUser,
     isPending: isCreatingUser,
     error: createUserError,
-  } = useCreateBusinessUser();
+  } = useCreateUser();
 
   const handleProfilePicUpload = usePickImage({
     setFile: setProfilePic,

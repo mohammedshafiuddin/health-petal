@@ -2,13 +2,15 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "drizzle-kit generate:pg",
+    "build": "rimraf ./dist && tsc",
     "db:push": "drizzle-kit push:pg",
     "db:seed": "tsx src/db/seed.ts",
-    "dev": "npx tsx watch index.ts"
+    "dev": "npx tsx watch index.ts",
+    "docker:build": "cd .. && docker buildx build --platform linux/amd64 -t mohdshafiuddin54/health_petal:latest --progress=plain -f backend/Dockerfile .",
+    "docker:push": "docker push mohdshafiuddin54/health_petal:latest"
   },
   "keywords": [],
   "author": "",
@@ -35,7 +37,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
-    "@types/node": "^24.3.0",
+    "@types/node": "^24.5.2",
     "@types/pg": "^8.15.5",
     "drizzle-kit": "^0.31.4",
     "ts-node-dev": "^2.0.0",

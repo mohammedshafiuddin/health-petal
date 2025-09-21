@@ -68,7 +68,7 @@ function HospitalForm({
     isLoading: dashboardLoading,
     refetch: refetchDashboardData,
   } = useHospitalAdminDashboard(initialValues.id);
-
+  
   const [selectedDoctorIds, setSelectedDoctorIds] = useState<
     (string | number)[]
   >([]);
@@ -96,7 +96,6 @@ function HospitalForm({
     { setSubmitting }: any
   ) => {
     try {
-      console.log('from submit function of updata page')
       
       const payload = {
         ...values,
@@ -216,7 +215,7 @@ function HospitalForm({
     : [];
 
   return (
-    <AppContainer>
+    <View style={tw`p-4`}>
       <Formik
         initialValues={mergedInitialValues}
         validationSchema={HospitalSchema}
@@ -230,7 +229,6 @@ function HospitalForm({
           errors,
           touched,
           isSubmitting,
-          setFieldValue,
         }) => (
           <View>
             <View style={tw`mb-4`}>
@@ -503,7 +501,7 @@ function HospitalForm({
           </View>
         )}
       </Formik>
-    </AppContainer>
+    </View>
   );
 }
 

@@ -354,7 +354,7 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
           );
         }
         
-        if(hospitalId) {
+        if(Boolean(Number(hospitalId))) {
 
           // Add doctor to the hospital as an employee with DOCTOR designation
           await tx.insert(hospitalEmployeesTable).values({
@@ -365,8 +365,10 @@ export const addBusinessUser = async (req: Request, res: Response, next: NextFun
         }
       }
 
+
+      
       // If role is hospital admin, allow optional hospitalId
-      if (role === ROLE_NAMES.HOSPITAL_ADMIN && hospitalId) {
+      if (role === ROLE_NAMES.HOSPITAL_ADMIN && Boolean(Number(hospitalId))) {
         await tx.insert(hospitalEmployeesTable).values({
           hospitalId,
           userId: newUser.id,

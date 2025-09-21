@@ -22,17 +22,7 @@ app.use((req, res, next) => {
   next();
 });
 
-((async() => {
-  // Initialize the database with seed data
-  await seed();
-  
-  // Initialize application services
-  try {
-    await initFunc();
-  } catch (error) {
-    console.error('Application failed to initialize properly:', error);
-  }
-})())
+
 
 app.use('/api', mainRouter)
 

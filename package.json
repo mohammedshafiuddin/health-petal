@@ -1,0 +1,15 @@
+{
+  "name": "pooler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "docker:build": "docker buildx build -t mohdshafiuddin54/health_petal:latest . --progress=plain --platform linux/amd64",
+    "docker:push": "docker push mohdshafiuddin54/health_petal:latest",
+    "build": "rimraf ./dist && tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

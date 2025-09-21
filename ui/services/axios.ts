@@ -4,8 +4,9 @@ import { getJWT } from '@/hooks/useJWT';
 import { DeviceEventEmitter } from 'react-native'
 import { FORCE_LOGOUT_EVENT } from '../lib/const-strs';
 
-// const API_BASE_URL = 'http://192.168.1.5:4000'; // Change to your API base URL
-const API_BASE_URL = 'http://192.168.100.91:4000'; // Change to your API base URL
+// const API_BASE_URL = 'http://192.168.1.7:4000'; // Change to your API base URL
+const API_BASE_URL = 'http://192.168.100.92:4000'; // Change to your API base URL
+// const API_BASE_URL = 'https://technocracy.ovh:4000'; // Change to your API base URL
 // const API_BASE_URL = 'http://10.59.191.237:4000/api/mobile/'; // Change to your API base URL
 // const API_BASE_URL = 'http://localhost:4000/api/mobile/'; // Change to your API base URL
 // const API_BASE_URL = 'https://car-safar.com/api/mobile/'; // Change to your API base URL

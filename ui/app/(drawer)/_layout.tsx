@@ -338,6 +338,7 @@ function CustomDrawerContent(props: any) {
     "payment-successful",
     "payment-failed",
     "appointments",
+    "index",
   ];
   const adminOnlyRoutes = ["admin-panel"];
   const genUserOnlyRoutes = ["my-tokens"];

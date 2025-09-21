@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ui",
-    "slug": "ui",
+    "name": "Health Petal",
+    "slug": "health-petal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.victoriousshafi.ui",
+      "bundleIdentifier": "com.mohammedshafiudin54.health-petal",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "ppemerchantsdkv1",
@@ -27,7 +27,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.victoriousshafi.ui"
+      "package": "com.mohammedshafiudin54.health-petal"
     },
     "web": {
       "bundler": "metro",
@@ -50,6 +50,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c61a345f-ddd5-4b10-94f3-304a83edd9d7"
+      }
     }
   }
 }

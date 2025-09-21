@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoggedIn(!!token);
       if (!token) {
         if (!pathname.includes("login")) {
-          router.replace("/(drawer)/login" as any);
+          router.replace("/login" as any);
         }
       } else {
         refetchResponsibilities();
@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (!pageConditon) {
             router.replace({
-              pathname: "/(drawer)/login" as any,
+              pathname: "/login" as any,
               params: isSessionExpired ? { message: SESSION_EXPIRED_MSG } : {},
             });
           }
@@ -163,7 +163,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserId(result.user.id);
 
         await saveJWT(result.token);
-
+        console.log({result})
+        
         // Update login state in auth context
         setIsLoggedIn(true);
 

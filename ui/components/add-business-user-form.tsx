@@ -281,15 +281,7 @@ function AddBusinessUserForm({
 
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={tw`flex-1`}
-      keyboardVerticalOffset={100}
-    >
-      <ScrollView
-        contentContainerStyle={tw`flex-grow p-2`}
-        showsVerticalScrollIndicator={false}
-      >
+
         <View style={tw`flex-col gap-4 pb-10`}>
           <Formik
             initialValues={initialValues}
@@ -574,8 +566,6 @@ function AddBusinessUserForm({
             )}
           </Formik>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
   );
 }
 

@@ -30,6 +30,7 @@ The database schema includes the following tables:
 - `npm run migrate` - Generate SQL migration files
 - `npm run db:push` - Push schema changes to the database
 - `npm run db:seed` - Seed the database with mock data
+- `npm run docker:build` - Build Docker image for the backend
 
 ## Getting Started
 
@@ -74,3 +75,23 @@ The database schema includes the following tables:
    JOIN profiles p ON d.user_id = p.id
    JOIN specializations s ON ds.specialization_id = s.id;
    ```
+
+## Docker
+
+This project includes Docker support for easy deployment:
+
+1. Build the Docker image:
+   ```
+   npm run docker:build
+   ```
+
+2. Run with Docker Compose (includes PostgreSQL database):
+   ```
+   docker-compose up -d
+   ```
+
+The Docker Compose setup includes:
+- PostgreSQL database with the correct schema
+- Backend application with all environment variables configured
+
+Note: For production deployment, make sure to update the environment variables in docker-compose.yml with your actual values.

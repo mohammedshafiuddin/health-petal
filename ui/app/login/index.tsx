@@ -29,13 +29,12 @@ import { useAuth } from "@/components/context/auth-context";
 import MyTextInput from "@/components/textinput";
 import { useTheme } from "@/app/hooks/theme.context";
 import BottomDialog from "@/components/dialog";
-import { useGetUserById, useUserResponsibilities } from "@/api-hooks/user.api";
 import useHideDrawerHeader from "@/hooks/useHideDrawerHeader";
 import { useCurrentUserId } from "@/hooks/useCurrentUserId";
 import DecorativeGraphics from "@/components/decorative-graphics";
 
 function Login() {
-  // const { refetch: refetchResponsibilities } = useUserResponsibilities(  );
+
   const { message } = useLocalSearchParams();
   const isSessionExpired = message === SESSION_EXPIRED_MSG;
   //   const { expoPushToken } = useNotification();

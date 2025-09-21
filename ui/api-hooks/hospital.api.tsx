@@ -69,7 +69,11 @@ export function useCreateHospital() {
   
   return useMutation<CreateHospitalResponse, Error, FormData>({
     mutationFn: async (hospitalPayload: FormData) => {
-      const response = await axios.post<CreateHospitalResponse>('/hospitals', hospitalPayload);
+      const response = await axios.post<CreateHospitalResponse>('/hospitals', hospitalPayload, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
       return response.data;
     },
     onSuccess: () => {

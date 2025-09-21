@@ -48,7 +48,7 @@ export default function MyProfile() {
           text: 'Logout', 
           onPress: () => {
             // Clear user data and redirect to login
-            router.replace('/(drawer)/login');
+            router.replace('/login');
           }
         }
       ]

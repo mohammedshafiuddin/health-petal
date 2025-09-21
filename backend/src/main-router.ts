@@ -1,8 +1,26 @@
 import { Router, Request, Response, NextFunction } from "express";
 import v1Router from "./v1-router";
 import { ApiError } from "./lib/api-error";
+import seed from "./db/seed";
 
 const router = Router();
+
+// Health check endpoint
+router.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+router.get('/seed', (req:Request, res: Response) => {
+  seed();
+    res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+})
 
 router.use('/v1', v1Router);
 
