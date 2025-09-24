@@ -21,17 +21,18 @@ interface SingleDoctorAvailabilityResponse {
 }
 
 /**
- * Hook to fetch a doctor's availability for the next 3 days
+ * Hook to fetch a doctor's availability for the next 3 days or 30 days if fullMonth is true
  * @param doctorId The ID of the doctor
+ * @param fullMonth Whether to fetch 30 days instead of 3 (default: false)
  */
-export function useGetDoctorAvailabilityForNextDays(doctorId: number | string | undefined) {
+export function useGetDoctorAvailabilityForNextDays(doctorId: number | string | undefined, fullMonth: boolean = false) {
   return useQuery<DoctorAvailabilityResponse>({
-    queryKey: ['doctor-availability-next-days', doctorId],
+    queryKey: ['doctor-availability-next-days', doctorId, fullMonth],
     enabled: !!doctorId,
     queryFn: async () => {
       if (!doctorId) throw new Error("Doctor ID is required");
       const response = await axios.get<DoctorAvailabilityResponse>(
-        `/tokens/doctor-availability/next-days?doctorId=${doctorId}`
+        `/tokens/doctor-availability/next-days?doctorId=${doctorId}&full-month=${fullMonth}`
       );
       return response.data;
     },
@@ -107,6 +108,7 @@ export function useUpdateDoctorAvailability() {
   
   return useMutation<SingleDoctorAvailabilityResponse[], Error, DoctorAvailabilityPayload[]>({
     mutationFn: async (updates: DoctorAvailabilityPayload[]) => {
+      updates.forEach(console.log);
       const updatePromises = updates.map(update => 
         axios.post<SingleDoctorAvailabilityResponse>('/tokens/doctor-availability', update)
       );
@@ -224,6 +226,31 @@ export function useUpdateTokenStatus() {
       queryClient.invalidateQueries({ queryKey: ['hospital-todays-tokens'] });
       queryClient.invalidateQueries({ queryKey: ['my-upcoming-tokens'] });
       queryClient.invalidateQueries({ queryKey: ['my-past-tokens'] });
+    }
+  });
+}
+
+/**
+ * Hook to create a new offline token
+ */
+export function useCreateOfflineToken() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ doctorId, patientName, patientMobile, symptoms, date }: { doctorId: number, patientName: string, patientMobile: string, symptoms: string, date: string }) => {
+      const response = await axios.post('/tokens/offline', { 
+        doctorId, 
+        patientName, 
+        patientMobile,
+        symptoms,
+        date
+      });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries({ queryKey: ['hospital-todays-tokens'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-tokens', variables.doctorId] });
     }
   });
 }

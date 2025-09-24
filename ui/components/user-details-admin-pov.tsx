@@ -1,39 +1,40 @@
-import DateTimePickerMod from '@/components/date-time-picker';
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
-import TextInput from '@/components/textinput';
-import { useRouter } from 'expo-router';
-import tw from '@/app/tailwind';
-import DoctorDetails from '@/components/doctor-details';
-import { ThemedView } from '@/components/ThemedView';
-import MyText from '@/components/text';
-import MyButton from '@/components/button';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { useGetDoctorAvailabilityForNextDays, useUpdateDoctorAvailability } from "@/api-hooks/token.api";
+import DateTimePickerMod from "@/components/date-time-picker";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
+import TextInput from "@/components/textinput";
+import { useRouter } from "expo-router";
+import tw from "@/app/tailwind";
+import DoctorDetails from "@/components/doctor-details";
+import { ThemedView } from "@/components/ThemedView";
+import MyText from "@/components/text";
+import MyButton from "@/components/button";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import {
+  useGetDoctorAvailabilityForNextDays,
+  useUpdateDoctorAvailability,
+} from "@/api-hooks/token.api";
 import { useGetUserById, useUpdateBusinessUser } from "@/api-hooks/user.api";
 import { BottomDialog } from "@/components/dialog";
-import { User } from 'shared-types';
-import AppContainer from './app-container';
-import DatePicker from '@/components/date-picker';
-import { useMarkDoctorLeave, useGetDoctorUpcomingLeaves } from '@/api-hooks/doctor.api';
-import Checkbox from './checkbox';
-import { useUpdateDoctorInning } from '@/api-hooks/doctor.api';
-
-// Extended type for doctor
-interface DoctorUser extends User {
-  qualifications?: string;
-  // specializations?: Array<{id: number, name: string, description?: string}>;
-  consultationFee?: number;
-  dailyTokenCount?: number;
-  doctorId?: number;
-  role?: string;
-  hospital?: string;
-}
+import { User, DashboardDoctor } from "shared-types";
+import AppContainer from "./app-container";
+import DatePicker from "@/components/date-picker";
+import {
+  useMarkDoctorLeave,
+  useGetDoctorUpcomingLeaves,
+} from "@/api-hooks/doctor.api";
+import Checkbox from "./checkbox";
+import { useUpdateDoctorInning } from "@/api-hooks/doctor.api";
+import OfflineTokenDialog from "./OfflineTokenDialog";
 
 interface AdminDoctorDetailsProps {
   doctorId: number;
 }
-
 
 // Doctor Availability Section Component - only visible to hospital admins
 interface DoctorAvailabilitySectionProps {
@@ -66,7 +67,7 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
     data: availabilityData,
     isLoading,
     isError,
-  } = useGetDoctorAvailabilityForNextDays(doctorId);
+  } = useGetDoctorAvailabilityForNextDays(doctorId, false);
 
   // Update local state when data is fetched
   useEffect(() => {
@@ -94,12 +95,10 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
         : defaultTokenCount?.toString() || "0"
     );
 
-    
     setIsStopped(currentAvailability ? currentAvailability.isStopped : false);
     setIsOneLeave(currentAvailability ? currentAvailability.isLeave : false);
     setDialogOpen(true);
   };
-  
 
   // Function to close dialog
   const closeDialog = () => {
@@ -173,7 +172,7 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
       consultationsDone: currentItem?.availability
         ? currentItem.availability.consultationsDone
         : 0,
-      isLeave: isOnLeave
+      isLeave: isOnLeave,
     };
 
     updateAvailabilityMutation.mutate([update], {
@@ -202,7 +201,9 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
 
     // Calculate the new count
     const currentCount = availability.filledTokenCount;
-    const newCount = increment ? currentCount + 1 : Math.max(0, currentCount - 1);
+    const newCount = increment
+      ? currentCount + 1
+      : Math.max(0, currentCount - 1);
 
     // Don't exceed total tokens
     if (newCount > availability.totalTokenCount) {
@@ -271,7 +272,9 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
 
     // Calculate the new count
     const currentCount = availability.consultationsDone;
-    const newCount = increment ? currentCount + 1 : Math.max(0, currentCount - 1);
+    const newCount = increment
+      ? currentCount + 1
+      : Math.max(0, currentCount - 1);
 
     // Don't exceed filled tokens
     if (newCount > availability.filledTokenCount) {
@@ -368,48 +371,42 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
       </View>
     );
   }
-  
 
   return (
     <>
-      <View style={tw`mt-4`}>
-        <MyText style={tw`text-lg font-bold mb-4`}>
-          Manage Availability
-        </MyText>
+      <View style={tw`mt-4 px-2`}>
+        <MyText style={tw`text-xl font-bold mb-4 text-gray-800 dark:text-white`}>Manage Availability</MyText>
 
         {localAvailabilities.map((item) => (
           <View
             key={item.date}
-
-            style={tw`mb-4 p-3 rounded-lg ${
+            style={tw`mb-4 p-4 rounded-xl shadow-md ${
               isToday(item.date)
-                ? "bg-yellow-50 dark:bg-yellow-900/30"
-                : "bg-gray-50 dark:bg-gray-800/50"
+                ? "bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/30 dark:to-amber-900/30 border-2 border-indigo-300 dark:border-indigo-600"
+                : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            <View style={tw`flex-row justify-between items-start`}>
-              <View>
-                <MyText style={tw`font-medium`}>{formatDate(item.date)}</MyText>
+            <View style={tw`flex-row justify-between items-start mb-3`}>
+              <View style={tw`flex-1`}>
+                <MyText style={tw`font-semibold text-base text-gray-800 dark:text-gray-200`}>{formatDate(item.date)}</MyText>
                 {isToday(item.date) && (
-                  <MyText style={tw`text-xs text-green-600 font-medium`}>
+                  <MyText style={tw`text-xs text-green-600 font-medium bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full inline-block mt-1`}>
                     Today
                   </MyText>
                 )}
                 {item.availability?.isLeave && (
-                  <MyText style={tw`text-xs text-red-500 font-bold mt-1`}>
+                  <MyText style={tw`text-xs text-red-500 font-bold mt-1 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-full inline-block`}>
                     On Leave
                   </MyText>
                 )}
               </View>
 
               <TouchableOpacity
-                style={tw`bg-blue1 px-3 py-1 rounded-md`}
-                onPress={() =>
-                  openUpdateDialog(item.date, item.availability)
-                }
+                style={tw`bg-indigo-600 px-4 py-2 rounded-lg min-w-[70px] items-center justify-center`}
+                onPress={() => openUpdateDialog(item.date, item.availability)}
               >
-                <MyText style={tw`text-white text-xs font-medium`}>
-                  {item.availability ? "Update" : "Add"}
+                <MyText style={tw`text-white text-sm font-medium`}>
+                  {item.availability ? "Edit" : "Add"}
                 </MyText>
               </TouchableOpacity>
             </View>
@@ -417,105 +414,126 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
             <View style={tw`mt-2`}>
               {item.availability ? (
                 <View>
-                  <View style={tw`flex-row justify-between mb-2`}>
-                    <MyText style={tw`text-sm`}>
-                      Total Tokens: {item.availability.totalTokenCount}
-                    </MyText>
-                    <MyText style={tw`text-sm`}>
-                      Available: {item.availability.availableTokens}
-                    </MyText>
+                  <View style={tw`flex-row justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700`}>
+                    <View style={tw`bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg flex-1 mr-2`}>
+                      <MyText style={tw`text-xs text-gray-500 dark:text-gray-400 mb-1`}>Total Tokens</MyText>
+                      <MyText style={tw`text-lg font-bold text-blue-700 dark:text-blue-300`}>{item.availability.totalTokenCount}</MyText>
+                    </View>
+                    <View style={tw`bg-green-50 dark:bg-green-900/20 p-3 rounded-lg flex-1 ml-2`}>
+                      <MyText style={tw`text-xs text-gray-500 dark:text-gray-400 mb-1`}>Available</MyText>
+                      <MyText style={tw`text-lg font-bold text-green-700 dark:text-green-300`}>{item.availability.availableTokens}</MyText>
+                    </View>
                   </View>
                   {!item.availability.isLeave && (
                     <>
                       {/* Filled Tokens Count with adjustment buttons */}
-                      <View style={tw`flex-row items-center mb-2`}>
-                        <MyText style={tw`text-sm mr-2`}>Filled Tokens:</MyText>
-                        <TouchableOpacity
-                          onPress={() =>
-                            adjustFilledTokens(item.date, item.availability, false)
-                          }
-                          style={tw`bg-gray-300 w-7 h-7 rounded-full items-center justify-center mr-2`}
-                        >
-                          <MyText style={tw`text-lg font-bold`}>-</MyText>
-                        </TouchableOpacity>
-                        <MyText style={tw`text-sm mx-2 font-medium`}>
-                          {item.availability.filledTokenCount}
-                        </MyText>
-                        <TouchableOpacity
-                          onPress={() =>
-                            adjustFilledTokens(item.date, item.availability, true)
-                          }
-                          style={tw`bg-gray-300 w-7 h-7 rounded-full items-center justify-center ml-2`}
-                        >
-                          <MyText style={tw`text-lg font-bold`}>+</MyText>
-                        </TouchableOpacity>
+                      <View style={tw`flex-row items-center mb-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg`}>
+                        <View style={tw`flex-1`}>
+                          <MyText style={tw`text-sm font-medium text-gray-700 dark:text-gray-300`}>Filled Tokens</MyText>
+                        </View>
+                        <View style={tw`flex-row items-center`}>
+                          <TouchableOpacity
+                            onPress={() =>
+                              adjustFilledTokens(
+                                item.date,
+                                item.availability,
+                                false
+                              )
+                            }
+                            style={tw`bg-gray-300 dark:bg-gray-600 w-8 h-8 rounded-full items-center justify-center mr-3`}
+                          >
+                            <MyText style={tw`text-lg font-bold text-gray-800 dark:text-white`}>-</MyText>
+                          </TouchableOpacity>
+                          <MyText style={tw`text-base font-bold w-8 text-center`}>
+                            {item.availability.filledTokenCount}
+                          </MyText>
+                          <TouchableOpacity
+                            onPress={() =>
+                              adjustFilledTokens(
+                                item.date,
+                                item.availability,
+                                true
+                              )
+                            }
+                            style={tw`bg-gray-300 dark:bg-gray-600 w-8 h-8 rounded-full items-center justify-center ml-3`}
+                          >
+                            <MyText style={tw`text-lg font-bold text-gray-800 dark:text-white`}>+</MyText>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                       {/* Consultations Done Count with adjustment buttons */}
-                      <View style={tw`flex-row items-center mb-2`}>
-                        <MyText style={tw`text-sm mr-2`}>Consultations:</MyText>
-                        <TouchableOpacity
-                          onPress={() =>
-                            adjustConsultationsDone(
-                              item.date,
-                              item.availability,
-                              false
-                            )
-                          }
-                          style={tw`bg-gray-300 w-7 h-7 rounded-full items-center justify-center mr-2`}
-                        >
-                          <MyText style={tw`text-lg font-bold`}>-</MyText>
-                        </TouchableOpacity>
-                        <MyText style={tw`text-sm mx-2 font-medium`}>
-                          {item.availability.consultationsDone}
-                        </MyText>
-                        <TouchableOpacity
-                          onPress={() =>
-                            adjustConsultationsDone(
-                              item.date,
-                              item.availability,
-                              true
-                            )
-                          }
-                          style={tw`bg-gray-300 w-7 h-7 rounded-full items-center justify-center ml-2`}
-                        >
-                          <MyText style={tw`text-lg font-bold`}>+</MyText>
-                        </TouchableOpacity>
+                      <View style={tw`flex-row items-center mb-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg`}>
+                        <View style={tw`flex-1`}>
+                          <MyText style={tw`text-sm font-medium text-gray-700 dark:text-gray-300`}>Consultations</MyText>
+                        </View>
+                        <View style={tw`flex-row items-center`}>
+                          <TouchableOpacity
+                            onPress={() =>
+                              adjustConsultationsDone(
+                                item.date,
+                                item.availability,
+                                false
+                              )
+                            }
+                            style={tw`bg-gray-300 dark:bg-gray-600 w-8 h-8 rounded-full items-center justify-center mr-3`}
+                          >
+                            <MyText style={tw`text-lg font-bold text-gray-800 dark:text-white`}>-</MyText>
+                          </TouchableOpacity>
+                          <MyText style={tw`text-base font-bold w-8 text-center`}>
+                            {item.availability.consultationsDone}
+                          </MyText>
+                          <TouchableOpacity
+                            onPress={() =>
+                              adjustConsultationsDone(
+                                item.date,
+                                item.availability,
+                                true
+                              )
+                            }
+                            style={tw`bg-gray-300 dark:bg-gray-600 w-8 h-8 rounded-full items-center justify-center ml-3`}
+                          >
+                            <MyText style={tw`text-lg font-bold text-gray-800 dark:text-white`}>+</MyText>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </>
                   )}
                   {item.availability.isStopped && (
-                    <View style={tw`mt-1`}>
-                      <MyText style={tw`text-red-500 text-sm`}>
-                        Tokens are currently stopped for this day
+                    <View style={tw`mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg`}>
+                      <MyText style={tw`text-red-500 text-sm font-medium`}>
+                        ⚠️ Tokens are currently stopped for this day
                       </MyText>
                     </View>
                   )}
                 </View>
               ) : (
-                <MyText style={tw`text-red-500 text-sm`}>
-                  Not Available
-                </MyText>
+                <View style={tw`p-4 bg-red-50 dark:bg-red-900/20 rounded-lg`}>
+                  <MyText style={tw`text-red-500 text-center font-medium`}>Not Available</MyText>
+                </View>
               )}
             </View>
           </View>
         ))}
 
         {successMessage ? (
-          <MyText style={tw`text-green-500 text-sm text-center mt-2`}>
-            {successMessage}
-          </MyText>
+          <View style={tw`mt-3 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg`}>
+            <MyText style={tw`text-green-700 dark:text-green-300 text-center font-medium`}>
+              {successMessage}
+            </MyText>
+          </View>
         ) : null}
       </View>
 
       {/* Availability Update Dialog */}
       <BottomDialog open={dialogOpen} onClose={closeDialog}>
-        <View style={tw`p-4`}>
-          <MyText style={tw`text-lg font-bold mb-4 text-center`}>
+        <View style={tw`p-5`}>
+          <MyText style={tw`text-xl font-bold mb-1 text-center text-gray-800 dark:text-white`}>
             Update Availability
           </MyText>
+          <MyText style={tw`text-gray-500 dark:text-gray-400 text-center mb-4`}>Set availability for selected date</MyText>
 
           {selectedDate && (
-            <MyText style={tw`mb-4 text-center`}>
+            <MyText style={tw`mb-4 text-center text-lg font-semibold text-gray-700 dark:text-gray-300`}>
               {new Date(selectedDate).toLocaleDateString(undefined, {
                 weekday: "long",
                 month: "long",
@@ -524,34 +542,41 @@ const DoctorAvailabilitySection: React.FC<DoctorAvailabilitySectionProps> = ({
             </MyText>
           )}
 
-          <View style={tw`mb-4`}>
-            <MyText style={tw`mb-2`}>Token Count:</MyText>
+          <View style={tw`mb-5`}>
+            <MyText style={tw`mb-3 text-base font-medium text-gray-700 dark:text-gray-300`}>Token Count:</MyText>
             <TextInput
-              style={tw`border rounded-md px-3 py-2 mb-2`}
+              style={tw`border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-3 text-base bg-white dark:bg-gray-800 text-gray-800 dark:text-white`}
               value={tokenCount}
               onChangeText={setTokenCount}
               keyboardType="number-pad"
               maxLength={3}
+              placeholder="Enter token count"
             />
 
-            <View style={tw`flex-row items-center mb-4`}>
-              <Checkbox checked={isStopped} onPress={() => setIsStopped(!isStopped)} />
-              <MyText>Stop accepting new tokens for this day</MyText>
+            <View style={tw`flex-row items-center mb-4 mt-6`}>
+              <Checkbox
+                checked={isStopped}
+                onPress={() => setIsStopped(!isStopped)}
+              />
+              <MyText style={tw`ml-2 text-gray-700 dark:text-gray-300`}>Stop accepting new tokens for this day</MyText>
             </View>
             <View style={tw`flex-row items-center mb-4`}>
-              <Checkbox checked={isOnLeave} onPress={() => setIsOneLeave(!isOnLeave)} />
-              <MyText>Is On Leave</MyText>
+              <Checkbox
+                checked={isOnLeave}
+                onPress={() => setIsOneLeave(!isOnLeave)}
+              />
+              <MyText style={tw`ml-2 text-gray-700 dark:text-gray-300`}>Is On Leave</MyText>
             </View>
           </View>
 
           <View style={tw`flex-row justify-between`}>
             <MyButton
-              style={[tw`flex-1 mr-2`, { backgroundColor: "#9ca3af" }]}
+              style={[tw`flex-1 mr-2 rounded-xl py-3`, { backgroundColor: "#9ca3af" }]}
               onPress={closeDialog}
               textContent="Cancel"
             />
             <MyButton
-              style={tw`flex-1 ml-2`}
+              style={tw`flex-1 ml-2 rounded-xl py-3 bg-indigo-600`}
               onPress={updateAvailability}
               textContent="Update"
             />
@@ -567,15 +592,22 @@ interface LeaveManagementSectionProps {
   doctorId: number;
 }
 
-const LeaveManagementSection: React.FC<LeaveManagementSectionProps> = ({ doctorId }) => {
-  const { data: upcomingLeaves, isLoading: isLeavesLoading, isError: isLeavesError } = useGetDoctorUpcomingLeaves(doctorId);
+const LeaveManagementSection: React.FC<LeaveManagementSectionProps> = ({
+  doctorId,
+}) => {
+  const {
+    data: upcomingLeaves,
+    isLoading: isLeavesLoading,
+    isError: isLeavesError,
+  } = useGetDoctorUpcomingLeaves(doctorId);
   const accentColor = useThemeColor(
     { light: "#4f46e5", dark: "#818cf8" },
     "tint"
   );
 
   // State for holiday dialog
-  const { mutate: markDoctorLeave, isPending: isMarkingLeave } = useMarkDoctorLeave();
+  const { mutate: markDoctorLeave, isPending: isMarkingLeave } =
+    useMarkDoctorLeave();
   const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
   const [holidayStartDate, setHolidayStartDate] = useState<Date | null>(null);
   const [holidayEndDate, setHolidayEndDate] = useState<Date | null>(null);
@@ -617,61 +649,87 @@ const LeaveManagementSection: React.FC<LeaveManagementSectionProps> = ({ doctorI
   return (
     <>
       <View style={tw`mt-8 p-4 bg-white rounded-xl shadow-md`}>
-        <MyText style={tw`text-lg font-bold mb-2`}>Manage Doctor's Leaves</MyText>
+        <MyText style={tw`text-lg font-bold mb-2`}>
+          Manage Doctor's Leaves
+        </MyText>
         <MyButton
           textContent="Create Holiday"
           style={tw`mb-2`}
           onPress={() => setHolidayDialogOpen(true)}
         />
-        <MyText style={tw`text-base font-semibold mt-4 mb-2`}>Upcoming Leaves (Next 1 Month):</MyText>
+        <MyText style={tw`text-base font-semibold mt-4 mb-2`}>
+          Upcoming Leaves (Next 1 Month):
+        </MyText>
         {isLeavesLoading && <MyText>Loading...</MyText>}
-        {isLeavesError && <MyText style={tw`text-red-500`}>Failed to load leaves.</MyText>}
+        {isLeavesError && (
+          <MyText style={tw`text-red-500`}>Failed to load leaves.</MyText>
+        )}
         {!isLeavesLoading && upcomingLeaves?.leaveRanges?.length === 0 && (
           <MyText>No upcoming leaves.</MyText>
         )}
         {!isLeavesLoading && upcomingLeaves?.leaveRanges?.length > 0 && (
           <View>
-            {upcomingLeaves.leaveRanges.map((range: { startDate: string, endDate: string }, idx: number) => (
-              <View key={idx} style={tw`mb-2 p-2 bg-gray-100 rounded-md`}>
-                <MyText style={tw`text-sm`}>From: <MyText style={tw`font-bold`}>{range.startDate}</MyText></MyText>
-                <MyText style={tw`text-sm`}>To: <MyText style={tw`font-bold`}>{range.endDate}</MyText></MyText>
-              </View>
-            ))}
+            {upcomingLeaves.leaveRanges.map(
+              (range: { startDate: string; endDate: string }, idx: number) => (
+                <View key={idx} style={tw`mb-2 p-2 bg-gray-100 rounded-md`}>
+                  <MyText style={tw`text-sm`}>
+                    From:{" "}
+                    <MyText style={tw`font-bold`}>{range.startDate}</MyText>
+                  </MyText>
+                  <MyText style={tw`text-sm`}>
+                    To: <MyText style={tw`font-bold`}>{range.endDate}</MyText>
+                  </MyText>
+                </View>
+              )
+            )}
           </View>
         )}
       </View>
 
       {/* Holiday Dialog */}
-      <BottomDialog open={holidayDialogOpen} onClose={() => setHolidayDialogOpen(false)}>
+      <BottomDialog
+        open={holidayDialogOpen}
+        onClose={() => setHolidayDialogOpen(false)}
+      >
         <View style={tw`p-4`}>
-          <MyText style={tw`text-lg font-bold mb-4 text-center`}>Create Holiday</MyText>
+          <MyText style={tw`text-lg font-bold mb-4 text-center`}>
+            Create Holiday
+          </MyText>
           <View style={tw`mb-4`}>
             <MyText style={tw`mb-2`}>Start Date:</MyText>
-              <View style={tw`mb-2`}>
-                <MyText style={tw`mb-1`}>{holidayStartDate ? holidayStartDate.toLocaleDateString() : 'Select start date'}</MyText>
-                <DatePicker
-                  value={holidayStartDate || new Date()}
-                  setValue={setHolidayStartDate}
-                  placeholder="Select start date"
-                  showLabel={false}
-                />
-              </View>
+            <View style={tw`mb-2`}>
+              <MyText style={tw`mb-1`}>
+                {holidayStartDate
+                  ? holidayStartDate.toLocaleDateString()
+                  : "Select start date"}
+              </MyText>
+              <DatePicker
+                value={holidayStartDate || new Date()}
+                setValue={setHolidayStartDate}
+                placeholder="Select start date"
+                showLabel={false}
+              />
+            </View>
           </View>
           <View style={tw`mb-4`}>
             <MyText style={tw`mb-2`}>End Date:</MyText>
-              <View style={tw`mb-2`}>
-                <MyText style={tw`mb-1`}>{holidayEndDate ? holidayEndDate.toLocaleDateString() : 'Select end date'}</MyText>
-                <DatePicker
-                  value={holidayEndDate || new Date()}
-                  setValue={setHolidayEndDate}
-                  placeholder="Select end date"
-                  showLabel={false}
-                />
-              </View>
+            <View style={tw`mb-2`}>
+              <MyText style={tw`mb-1`}>
+                {holidayEndDate
+                  ? holidayEndDate.toLocaleDateString()
+                  : "Select end date"}
+              </MyText>
+              <DatePicker
+                value={holidayEndDate || new Date()}
+                setValue={setHolidayEndDate}
+                placeholder="Select end date"
+                showLabel={false}
+              />
+            </View>
           </View>
           <View style={tw`flex-row justify-between mt-4`}>
             <MyButton
-              style={[tw`flex-1 mr-2`, { backgroundColor: '#9ca3af' }]}
+              style={[tw`flex-1 mr-2`, { backgroundColor: "#9ca3af" }]}
               onPress={() => setHolidayDialogOpen(false)}
               textContent="Cancel"
             />
@@ -693,37 +751,57 @@ const LeaveManagementSection: React.FC<LeaveManagementSectionProps> = ({ doctorI
   );
 };
 
-export default function UserDetailsAdminPov({ doctorId }: AdminDoctorDetailsProps) {
+export default function UserDetailsAdminPov({
+  doctorId,
+}: AdminDoctorDetailsProps) {
   // OfficeInningSection: Pause/Resume Consultations
-  const OfficeInningSection: React.FC<{ doctorId: number }> = ({ doctorId }) => {
-    const accentColor = useThemeColor({ light: '#4f46e5', dark: '#818cf8' }, 'tint');
+  const OfficeInningSection: React.FC<{ doctorId: number }> = ({
+    doctorId,
+  }) => {
+    const accentColor = useThemeColor(
+      { light: "#4f46e5", dark: "#818cf8" },
+      "tint"
+    );
     const [dialogOpen, setDialogOpen] = useState(false);
     const [pauseReason, setPauseReason] = useState("");
     const [pauseDate, setPauseDate] = useState<Date | null>(null);
-    const { mutate: updateDoctorInning, isPending: isUpdatingInning } = useUpdateDoctorInning();
-    const { data: availabilityData, isLoading: isAvailabilityLoading } = useGetDoctorAvailabilityForNextDays(doctorId);
+    const { mutate: updateDoctorInning, isPending: isUpdatingInning } =
+      useUpdateDoctorInning();
+    const { data: availabilityData, isLoading: isAvailabilityLoading } =
+      useGetDoctorAvailabilityForNextDays(doctorId, false);
 
     // Find today's availability
     const todayStr = new Date().toISOString().slice(0, 10);
-    const todayAvailability = availabilityData?.availabilities?.find((a: any) => a.date === todayStr)?.availability;
+    const todayAvailability = availabilityData?.availabilities?.find(
+      (a: any) => a.date === todayStr
+    )?.availability;
     const isPaused = todayAvailability?.isPaused === true;
 
     const handlePause = () => {
       setDialogOpen(true);
     };
     const handleResume = () => {
-      updateDoctorInning({
-        doctorId,
-        date: todayStr,
-        isPaused: false,
-      }, {
-        onSuccess: () => {
-          Alert.alert('Consultations Resumed', 'Doctor consultations have been resumed.');
+      updateDoctorInning(
+        {
+          doctorId,
+          date: todayStr,
+          isPaused: false,
         },
-        onError: (error: any) => {
-          Alert.alert('Error', error?.message || 'Failed to resume consultations.');
-        },
-      });
+        {
+          onSuccess: () => {
+            Alert.alert(
+              "Consultations Resumed",
+              "Doctor consultations have been resumed."
+            );
+          },
+          onError: (error: any) => {
+            Alert.alert(
+              "Error",
+              error?.message || "Failed to resume consultations."
+            );
+          },
+        }
+      );
     };
     const handleDialogClose = () => {
       setDialogOpen(false);
@@ -731,29 +809,40 @@ export default function UserDetailsAdminPov({ doctorId }: AdminDoctorDetailsProp
       setPauseDate(null);
     };
     const handleDialogSubmit = () => {
-      updateDoctorInning({
-        doctorId,
-        date: todayStr,
-        isPaused: true,
-        pauseReason,
-      }, {
-        onSuccess: () => {
-          Alert.alert('Consultations Paused', 'Doctor consultations have been paused.');
-          handleDialogClose();
+      updateDoctorInning(
+        {
+          doctorId,
+          date: todayStr,
+          isPaused: true,
+          pauseReason,
         },
-        onError: (error: any) => {
-          Alert.alert('Error', error?.message || 'Failed to pause consultations.');
-        },
-      });
+        {
+          onSuccess: () => {
+            Alert.alert(
+              "Consultations Paused",
+              "Doctor consultations have been paused."
+            );
+            handleDialogClose();
+          },
+          onError: (error: any) => {
+            Alert.alert(
+              "Error",
+              error?.message || "Failed to pause consultations."
+            );
+          },
+        }
+      );
     };
     return (
       <View style={tw`mt-6 p-4 bg-gray-100 rounded-lg`}>
         <MyText style={tw`text-lg font-bold mb-2`}>
-          {isPaused ? 'Doctor Out' : 'Doctor In'}
+          {isPaused ? "Doctor Out" : "Doctor In"}
         </MyText>
         {isPaused && todayAvailability?.pauseReason && (
-           <MyText style={tw`text-sm text-red-500 mb-2`}>Reason: {todayAvailability.pauseReason}</MyText>
-         )}
+          <MyText style={tw`text-sm text-red-500 mb-2`}>
+            Reason: {todayAvailability.pauseReason}
+          </MyText>
+        )}
         <View style={tw`flex-row justify-between gap-4`}>
           <MyButton
             style={tw`flex-1`}
@@ -770,7 +859,9 @@ export default function UserDetailsAdminPov({ doctorId }: AdminDoctorDetailsProp
         </View>
         <BottomDialog open={dialogOpen} onClose={handleDialogClose}>
           <View style={tw`p-4`}>
-            <MyText style={tw`text-base font-semibold mb-2`}>Pause Consultations</MyText>
+            <MyText style={tw`text-base font-semibold mb-2`}>
+              Pause Consultations
+            </MyText>
             <MyText style={tw`mb-1`}>Reason for pause:</MyText>
             <TextInput
               value={pauseReason}
@@ -783,7 +874,7 @@ export default function UserDetailsAdminPov({ doctorId }: AdminDoctorDetailsProp
             {/* Date & Time picker removed as per request. Only reason input remains. */}
             <View style={tw`flex-row mt-4 justify-between`}>
               <MyButton
-                style={[tw`flex-1 mr-2`, { backgroundColor: '#9ca3af' }]}
+                style={[tw`flex-1 mr-2`, { backgroundColor: "#9ca3af" }]}
                 onPress={handleDialogClose}
                 textContent="Cancel"
               />
@@ -799,37 +890,57 @@ export default function UserDetailsAdminPov({ doctorId }: AdminDoctorDetailsProp
     );
   };
   const router = useRouter();
-  const accentColor = useThemeColor({ light: '#4f46e5', dark: '#818cf8' }, 'tint');
-  const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
-  const [holidayStartDate, setHolidayStartDate] = useState<Date | null>(null);
-  const [holidayEndDate, setHolidayEndDate] = useState<Date | null>(null);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  // State for offline token dialog
+  const [isOfflineTokenDialogOpen, setIsOfflineTokenDialogOpen] =
+    useState(false);
 
   if (isNaN(doctorId)) {
     return (
       <AppContainer>
         <ThemedView style={tw`flex-1 p-4 justify-center items-center`}>
-          <MyText style={tw`text-red-500 text-lg text-center mb-4`}>Invalid doctor ID</MyText>
-          <MyButton
-            onPress={() => router.back()}
-            textContent="Go Back"
-          />
+          <MyText style={tw`text-red-500 text-lg text-center mb-4`}>
+            Invalid doctor ID
+          </MyText>
+          <MyButton onPress={() => router.back()} textContent="Go Back" />
         </ThemedView>
       </AppContainer>
     );
   }
 
+  // Fetch doctor details for the doctor name in the dialog
+  const { data: doctorDetails } = useGetUserById(doctorId);
+
   return (
     <AppContainer>
-      <DoctorDetails 
-        doctorId={doctorId}
-        showFullDetails={true}
-        isAdminPoV={true}
-      />
+      <DoctorDetails doctorId={doctorId} showFullDetails={true} />
+      <View style={tw`p-4`}>
+        <TouchableOpacity
+          style={tw`bg-blue-500 p-4 rounded-xl items-center`}
+          onPress={() => setIsOfflineTokenDialogOpen(true)}
+        >
+          <MyText style={tw`text-white font-bold`}>Book Offline Token</MyText>
+        </TouchableOpacity>
+      </View>
       <OfficeInningSection doctorId={doctorId} />
       <DoctorAvailabilitySection doctorId={doctorId} />
-      <LeaveManagementSection doctorId={doctorId} />
+      <View style={tw`mt-6 p-4 bg-white rounded-xl shadow-md`}>
+        <MyButton
+          textContent="Manage Long-term Availability"
+          style={tw``}
+          onPress={() => router.push(`/doctor-availability-calendar/${doctorId}`)}
+        />
+        <MyText style={tw`mt-2 text-gray-600 dark:text-gray-400 text-sm`}>
+          Set availability for longer periods (monthly view)
+        </MyText>
+      </View>
+      {/* <LeaveManagementSection doctorId={doctorId} /> */}
+
+      <OfflineTokenDialog
+        open={isOfflineTokenDialogOpen}
+        onClose={() => setIsOfflineTokenDialogOpen(false)}
+        doctorId={doctorId}
+        doctorName={doctorDetails?.name || ""}
+      />
       {/* Doctor's Leave Management Section */}
     </AppContainer>
   );

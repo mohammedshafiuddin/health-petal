@@ -38,23 +38,25 @@ const CustomDropdown: React.FC<Props> = ({
         value={value}
         onChange={(item) => onValueChange(item.value)}
         placeholder={placeholder || label}
-        placeholderStyle={tw`text-gray-500`}
-        style={[styles.dropdown, error && styles.error]}
+        placeholderStyle={[tw`text-gray-500`, disabled && tw`text-gray-400`]}
+        style={[styles.dropdown, error && styles.error, disabled && styles.disabled]}
         disable={disabled}
         renderItem={(item: DropdownOption) => {
           const isSelected = value === item.value;
           return (
             <View style={[styles.item, isSelected && styles.selectedItem]}>
               <Text
-                style={
-                  isSelected ? styles.selectedTextStyle : styles.itemTextStyle
-                }
+                style={[
+                  isSelected ? styles.selectedTextStyle : styles.itemTextStyle,
+                  disabled && tw`text-gray-400`
+                ]}
               >
                 {item.label}
               </Text>
             </View>
           );
         }}
+        selectedTextStyle={disabled ? tw`text-gray-400` : undefined}
       />
     </View>
   );
@@ -71,6 +73,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: "#fff",
+  },
+  disabled: {
+    backgroundColor: "#f5f5f5",
+    borderColor: "#d3d3d3",
   },
   error: {
     borderColor: "red",

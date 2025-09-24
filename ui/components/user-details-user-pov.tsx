@@ -44,11 +44,9 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
   // Fetch doctor availability for the next 3 days
   const {
     data: availabilityData,
-    isLoading: isLoadingAvailability,
-    isError: isAvailabilityError,
-    error: availabilityError,
-    refetch: refetchAvailability,
-  } = useGetDoctorAvailabilityForNextDays(doctorId);
+    isLoading,
+    isError,
+  } = useGetDoctorAvailabilityForNextDays(doctorId, false);
 
   // Setup mutation for booking token
   const {

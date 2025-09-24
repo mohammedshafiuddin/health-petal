@@ -22,7 +22,7 @@ export interface HospitalTodaysTokensResponse {
 export interface DoctorTodayToken {
   id: number;
   queueNumber: number;
-  patientId: number;
+  patientId: number | null;
   patientName: string;
   patientMobile: string;
   description: string | null;

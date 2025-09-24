@@ -641,7 +641,7 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
           hospital: hospital[0].hospitalName,
           specializations: specializations.map(s => ({
             id: s.specialization.id,
-        profilePicUrl: null, // Placeholder for signed URL
+            name: s.specialization.name,
             description: s.specialization.description
           }))
         });

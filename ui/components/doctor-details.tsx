@@ -42,6 +42,7 @@ const DoctorDetails: React.FC<DoctorDetailsProps> = ({ doctorId, onPress, showFu
       </View>
     );
   }
+  
 
   return (
     <TouchableOpacity 

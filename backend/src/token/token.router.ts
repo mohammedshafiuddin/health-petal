@@ -1,13 +1,14 @@
 import express from 'express';
-import { 
-  bookToken, 
-  updateDoctorAvailability, 
-  getDoctorAvailabilityForNextDays, 
-  getMyUpcomingTokens, 
+import {
+  bookToken,
+  updateDoctorAvailability,
+  getDoctorAvailabilityForNextDays,
+  getMyUpcomingTokens,
   getMyPastTokens,
   getHospitalTodaysTokens,
   getDoctorTodaysTokens,
-  updateTokenStatus
+  updateTokenStatus,
+  createOfflineToken
 } from './token.controller';
 import { verifyToken } from '../middleware/auth';
 
@@ -68,5 +69,12 @@ router.get('/doctor-today/:doctorId', verifyToken, getDoctorTodaysTokens);
  * @access  Private - Requires authentication
  */
 router.patch('/:id/status', verifyToken, updateTokenStatus);
+
+/**
+ * @route   POST /api/token/offline
+ * @desc    Create an offline token for a doctor
+ * @access  Private - Requires authentication (hospital admin only)
+ */
+router.post('/offline', verifyToken, createOfflineToken);
 
 export default router;

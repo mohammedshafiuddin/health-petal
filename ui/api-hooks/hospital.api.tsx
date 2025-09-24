@@ -1,6 +1,6 @@
 import axios from "@/services/axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Doctor, DoctorSpecialization, Hospital } from "shared-types";
+import type { DashboardDoctor, Doctor, DoctorSpecialization, Hospital } from "shared-types";
 
 // Create hospital payload interface
 export interface CreateHospitalPayload {
@@ -176,7 +176,7 @@ export function useGetHospitalDoctors(hospitalId: number | null | undefined) {
 
 export interface HospitalAdminDashboardData {
   hospital: Hospital;
-  doctors: Doctor[];
+  doctors: DashboardDoctor[];
   admins: PotentialHospitalAdmin[];
   currentDate: string;
   totalDoctors: number;

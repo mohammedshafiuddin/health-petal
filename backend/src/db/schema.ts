@@ -289,3 +289,31 @@ export const paymentInfoTable = pgTable(
 );
 
 export const paymentInfoRelations = relations(paymentInfoTable, ({ one }) => ({}));
+
+export const offlineTokensTable = pgTable(
+	"offline_tokens",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		doctorId: integer("doctor_id").notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+		tokenNum: integer("token_num").notNull(),
+		description: varchar({ length: 1000 }),
+		patientName: varchar('patient_name',{ length: 255 }).notNull(),
+		mobileNumber: varchar('patient_mobile',{ length: 255 }).notNull(),
+		date: date("date").notNull(),
+		createdAt: date("created_at").notNull().default("now()"),
+	},
+	(t) => ({
+		unq_doctor_date_token_num: unique("unique_doctor_date_token_num").on(
+			t.doctorId,
+			t.date,
+			t.tokenNum
+		),
+	})
+);
+
+export const offlineTokensRelations = relations(offlineTokensTable, ({ one }) => ({
+	doctor: one(usersTable, {
+		fields: [offlineTokensTable.doctorId],
+		references: [usersTable.id],
+	}),
+}));

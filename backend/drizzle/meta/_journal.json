@@ -134,6 +134,20 @@
       "when": 1758083305858,
       "tag": "0018_premium_marvel_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1758725853774,
+      "tag": "0019_elite_thunderball",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1758725961436,
+      "tag": "0020_perpetual_speedball",
+      "breakpoints": true
     }
   ]
 }

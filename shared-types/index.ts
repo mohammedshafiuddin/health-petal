@@ -53,6 +53,21 @@ export interface Doctor {
   qualifications: string | null;
 }
 
+// Define local DashboardDoctor type based on the API response structure
+export interface DashboardDoctor {
+  availableTokens: number;
+  consultationFee: string;
+  consultationsDone: number;
+  currentConsultationNumber: number;
+  id: number;
+  isAvailable: boolean;
+  name: string;
+  profilePicUrl?: string | null;
+  qualifications: string | null;
+  tokensIssuedToday: number;
+  totalTokenCount: number;
+}
+
 // Token types
 export interface TokenDoctor {
   id: number;

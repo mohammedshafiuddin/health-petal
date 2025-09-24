@@ -1,16 +1,17 @@
 import { NextFunction, Request, Response } from "express";
 import { db } from "../db/db_index";
-import { 
-  tokenInfoTable, 
-  doctorInfoTable, 
-  doctorAvailabilityTable, 
-  usersTable, 
-  hospitalEmployeesTable, 
-  doctorSpecializationsTable, 
+import {
+  tokenInfoTable,
+  doctorInfoTable,
+  doctorAvailabilityTable,
+  usersTable,
+  hospitalEmployeesTable,
+  doctorSpecializationsTable,
   specializationsTable,
-  hospitalTable
-} from "../db/schema";
-import { eq, and, sql, desc, gte, inArray } from "drizzle-orm";
+  hospitalTable,
+  offlineTokensTable,
+  offlineTokensRelations
+} from "../db/schema";import { eq, and, sql, desc, gte, inArray } from "drizzle-orm";
 import { ApiError } from "../lib/api-error";
 import { 
   UpcomingToken, 
@@ -43,11 +44,18 @@ export const bookToken = async (req: Request, res: Response, next: NextFunction)
       throw new ApiError("Missing required fields: doctorId, userId, and tokenDate are required", 400);
     }
     
-    // Parse the token date (assuming it's in ISO format)
-    const bookingDate = new Date(tokenDate);
+    // Parse the date in a timezone-aware manner to avoid date shifting
+    // Expect date in YYYY-MM-DD format from the frontend
+    let formattedDate: string;
     
-    // Format date to YYYY-MM-DD for database queries
-    const formattedDate = bookingDate.toISOString().split('T')[0];
+    if (tokenDate.includes('-')) {
+      // Date is already in YYYY-MM-DD format (from dayjs or properly formatted date)
+      formattedDate = tokenDate;
+    } else {
+      // Date might be in timestamp format, convert to YYYY-MM-DD
+      const bookingDate = new Date(tokenDate);
+      formattedDate = bookingDate.toISOString().split('T')[0];
+    }
     
     // Check if doctor exists and is a doctor (would have an entry in doctorInfoTable)
     const doctor = await db.query.usersTable.findFirst({
@@ -165,17 +173,26 @@ export const updateDoctorAvailability = async (req: Request, res: Response, next
   try {
     // Extract data from request body
     const { doctorId, date, tokenCount, isStopped, filledTokenCount, consultationsDone, isLeave } = req.body;
+    console.log({doctorId, tokenCount, date, consultationsDone})
+    
     
     // Validate required fields
     if (!doctorId || !date || tokenCount === undefined) {
       throw new ApiError("Missing required fields: doctorId, date, and tokenCount are required", 400);
     }
     
-    // Parse the date (assuming it's in ISO format)
-    const availabilityDate = new Date(date);
+    // Parse the date in a timezone-aware manner to avoid date shifting
+    // Expect date in YYYY-MM-DD format from the frontend
+    let formattedDate: string;
     
-    // Format date to YYYY-MM-DD for database queries
-    const formattedDate = availabilityDate.toISOString().split('T')[0];
+    if (date.includes('-')) {
+      // Date is already in YYYY-MM-DD format (from dayjs or properly formatted date)
+      formattedDate = date;
+    } else {
+      // Date might be in timestamp format, convert to YYYY-MM-DD
+      const availabilityDate = new Date(date);
+      formattedDate = availabilityDate.toISOString().split('T')[0];
+    }
     
     // Check if doctor exists and is a doctor
     const doctor = await db.query.usersTable.findFirst({
@@ -235,7 +252,8 @@ export const updateDoctorAvailability = async (req: Request, res: Response, next
             totalTokenCount: tokenCount,
             filledTokenCount: 0,
             consultationsDone: consultationsDone !== undefined ? consultationsDone : 0,
-            isStopped: isStopped !== undefined ? isStopped : false
+            isStopped: isStopped !== undefined ? isStopped : false,
+            isLeave: isLeave !== undefined ? isLeave : false
           })
           .returning();
           
@@ -262,16 +280,17 @@ export const updateDoctorAvailability = async (req: Request, res: Response, next
 };
 
 /**
- * Get doctor's availability for the next 3 days
+ * Get doctor's availability for the next 3 days or 30 days if full-month is true
  * 
- * @param req Request object containing doctorId
+ * @param req Request object containing doctorId and optional full-month query parameter
  * @param res Response object
  * @param next Next function
  */
 export const getDoctorAvailabilityForNextDays = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Extract doctor ID from request query
+    // Extract doctor ID and full-month query parameter from request query
     const doctorId = req.query.doctorId as string;
+    const fullMonth = req.query['full-month'] === 'true'; // Convert string to boolean
     
     // Validate doctor ID
     if (!doctorId) {
@@ -295,17 +314,20 @@ export const getDoctorAvailabilityForNextDays = async (req: Request, res: Respon
       throw new ApiError("User is not registered as a doctor", 400);
     }
     
-    // Calculate dates for the next 3 days
+    // Determine how many days to fetch based on full-month parameter
+    const daysCount = fullMonth ? 30 : 3;
+    
+    // Calculate dates for the specified number of days
     const today = new Date();
     const nextDays = [];
     
-    for (let i = 0; i <= 2; i++) {
+    for (let i = 0; i < daysCount; i++) {
       const nextDay = new Date(today);
       nextDay.setDate(today.getDate() + i);
       nextDays.push(nextDay.toISOString().split('T')[0]); // Format: YYYY-MM-DD
     }
     
-    // Get doctor's availability for each of the next 3 days
+    // Get doctor's availability for each of the next days
     const availabilityResults = await Promise.all(
       nextDays.map(async (date) => {
         const availability = await db.query.doctorAvailabilityTable.findFirst({
@@ -334,9 +356,13 @@ export const getDoctorAvailabilityForNextDays = async (req: Request, res: Respon
       })
     );
     
-    // Return the availability for the next 3 days
+    // Return the availability for the requested number of days
+    const message = fullMonth 
+      ? "Doctor availability for the next 30 days retrieved successfully" 
+      : "Doctor availability for the next 3 days retrieved successfully";
+      
     res.status(200).json({
-      message: "Doctor availability for the next 3 days retrieved successfully",
+      message: message,
       doctorId: parseInt(doctorId),
       availabilities: availabilityResults
     });
@@ -828,8 +854,8 @@ export const getDoctorTodaysTokens = async (req: Request, res: Response, next: N
       ),
     });
     
-    // Get all tokens for the doctor for today
-    const tokens = await db.query.tokenInfoTable.findMany({
+    // Get all online tokens for the doctor for today
+    const onlineTokens = await db.query.tokenInfoTable.findMany({
       where: and(
         eq(tokenInfoTable.doctorId, doctorId),
         eq(tokenInfoTable.tokenDate, today)
@@ -839,13 +865,44 @@ export const getDoctorTodaysTokens = async (req: Request, res: Response, next: N
       },
       orderBy: tokenInfoTable.queueNum,
     });
+
+    // Get all offline tokens for the doctor for today
+    const offlineTokens = await db.query.offlineTokensTable.findMany({
+      where: and(
+        eq(offlineTokensTable.doctorId, doctorId),
+        eq(offlineTokensTable.date, today)
+      ),
+      orderBy: offlineTokensTable.tokenNum,
+    });
+
+    // Combine and sort all tokens
+    const allTokens = [
+      ...onlineTokens.map(token => ({
+        type: 'online',
+        id: token.id,
+        queueNum: token.queueNum,
+        patientId: token.userId,
+        patientName: token.user.name,
+        patientMobile: token.user.mobile,
+        description: token.description,
+      })),
+      ...offlineTokens.map(token => ({
+        type: 'offline',
+        id: token.id,
+        queueNum: token.tokenNum,
+        patientId: null, // Offline tokens don't have a registered userId
+        patientName: token.patientName,
+        patientMobile: token.mobileNumber,
+        description: token.description,
+      })),
+    ].sort((a, b) => a.queueNum - b.queueNum);
     
     // Current token number (consultation in progress)
     const currentTokenNumber = availability ? availability.consultationsDone + 1 : null;
     const completedTokens = availability?.consultationsDone || 0;
     
     // Format the tokens with patient information and status
-    const formattedTokens: DoctorTodayToken[] = tokens.map(token => {
+    const formattedTokens: DoctorTodayToken[] = allTokens.map(token => {
       let status: 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED' | 'CANCELLED';
       
       if (token.queueNum < (currentTokenNumber || 0)) {
@@ -859,9 +916,9 @@ export const getDoctorTodaysTokens = async (req: Request, res: Response, next: N
       return {
         id: token.id,
         queueNumber: token.queueNum,
-        patientId: token.userId,
-        patientName: token.user.name,
-        patientMobile: token.user.mobile,
+        patientId: token.patientId,
+        patientName: token.patientName,
+        patientMobile: token.patientMobile,
         description: token.description,
         status,
       };
@@ -874,12 +931,156 @@ export const getDoctorTodaysTokens = async (req: Request, res: Response, next: N
       doctorName: doctor.name,
       date: today,
       currentTokenNumber,
-      totalTokens: tokens.length,
+      totalTokens: allTokens.length,
       completedTokens,
       tokens: formattedTokens,
     };
     
     res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Create an offline token for a doctor (hospital admin only)
+ * 
+ * @param req Request object containing doctorId, userId, tokenDate, and optional description
+ * @param res Response object
+ * @param next Next function
+ */
+export const createOfflineToken = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { doctorId, patientName, patientMobile:mobileNumber, date:tokenDate, symptoms:description } = req.body;
+    const adminUserId = req.user?.userId; // User making the request (hospital admin)
+
+    // Validate required fields
+    if (!doctorId || !patientName || !mobileNumber || !tokenDate) {
+      throw new ApiError("Missing required fields: doctorId, patientName, mobileNumber, and tokenDate are required", 400);
+    }
+
+    if (!adminUserId) {
+      throw new ApiError("User not authenticated", 401);
+    }
+
+    // Parse the date in a timezone-aware manner to avoid date shifting
+    // Expect date in YYYY-MM-DD format from the frontend
+    let formattedDate: string;
+    
+    if (tokenDate.includes('-')) {
+      // Date is already in YYYY-MM-DD format (from dayjs or properly formatted date)
+      formattedDate = tokenDate;
+    } else {
+      // Date might be in timestamp format, convert to YYYY-MM-DD
+      const bookingDate = new Date(tokenDate);
+      formattedDate = bookingDate.toISOString().split('T')[0];
+    }
+
+    // --- Authorization Check: Ensure the requesting user is a hospital admin for the doctor's hospital ---
+    const doctorHospitalEmployee = await db.query.hospitalEmployeesTable.findFirst({
+      where: eq(hospitalEmployeesTable.userId, doctorId),
+    });
+
+    if (!doctorHospitalEmployee) {
+      throw new ApiError("Doctor is not associated with any hospital", 404);
+    }
+
+    const adminHospitalEmployee = await db.query.hospitalEmployeesTable.findFirst({
+      where: and(
+        eq(hospitalEmployeesTable.userId, adminUserId),
+        eq(hospitalEmployeesTable.hospitalId, doctorHospitalEmployee.hospitalId),
+        eq(hospitalEmployeesTable.designation, DESIGNATIONS.HOSPITAL_ADMIN) // Ensure admin is a hospital admin
+      ),
+    });
+
+    if (!adminHospitalEmployee) {
+      throw new ApiError("Not authorized to create offline tokens for this doctor. Only hospital admins can create offline tokens for doctors in their hospital.", 403);
+    }
+    // --- End Authorization Check ---
+
+    // Check if doctor exists and is a doctor
+    const doctor = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, doctorId)
+    });
+    
+    if (!doctor) {
+      throw new ApiError("Doctor not found", 404);
+    }
+    
+    const doctorInfo = await db.query.doctorInfoTable.findFirst({
+      where: eq(doctorInfoTable.userId, doctorId)
+    });
+    
+    if (!doctorInfo) {
+      throw new ApiError("User is not registered as a doctor", 400);
+    }
+    
+    // Check doctor's availability for that day
+    const availability = await db.query.doctorAvailabilityTable.findFirst({
+      where: and(
+        eq(doctorAvailabilityTable.doctorId, doctorId),
+        eq(doctorAvailabilityTable.date, formattedDate)
+      )
+    });
+    
+    if (!availability) {
+      throw new ApiError("Doctor is not available for booking on this date", 400);
+    }
+    
+    if (availability.isStopped) {
+      throw new ApiError("Doctor is not accepting appointments for this date", 400);
+    }
+    
+    const totalTokens = availability.totalTokenCount;
+    const filledTokens = availability.filledTokenCount;
+    const availableTokens = totalTokens - filledTokens;
+    
+    if (availableTokens <= 0) {
+      throw new ApiError("No more appointments available for this date", 400);
+    }
+    
+    return await db.transaction(async (tx) => {
+      const nextQueueNumber = filledTokens + 1;
+      
+      // Insert new offline token record
+      const [newOfflineToken] = await tx
+        .insert(offlineTokensTable)
+        .values({
+          doctorId: doctorId,
+          patientName: patientName,
+          mobileNumber: mobileNumber,
+          date: formattedDate,
+          tokenNum: nextQueueNumber,
+          description: description || null,
+          createdAt: new Date().toISOString().split('T')[0],
+        })
+        .returning();
+      
+      // Update doctor availability by incrementing the filled token count
+      await tx
+        .update(doctorAvailabilityTable)
+        .set({
+          filledTokenCount: filledTokens + 1
+        })
+        .where(eq(doctorAvailabilityTable.id, availability.id));
+      
+      // Create response object
+      const response = {
+        message: "Offline token created successfully",
+        token: {
+          id: newOfflineToken.id,
+          doctorId: newOfflineToken.doctorId,
+          patientName: newOfflineToken.patientName,
+          mobileNumber: newOfflineToken.mobileNumber,
+          tokenDate: newOfflineToken.date,
+          queueNumber: newOfflineToken.tokenNum,
+          description: newOfflineToken.description,
+          createdAt: newOfflineToken.createdAt
+        }
+      };
+      
+      return res.status(201).json(response);
+    });
   } catch (error) {
     next(error);
   }
