@@ -114,7 +114,7 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
  * Login a user
  */
 export const login = async (req: Request, res: Response, next: NextFunction) => {
-  try {
+
     const { login, password, useUsername } = req.body;
     
     // Validate required fields
@@ -220,10 +220,6 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     // Return user data with token
     return res.status(200).json(responseObj);
-  } catch (error) {
-    console.error("Login error:", error);
-    next(error instanceof ApiError ? error : new ApiError("Failed to authenticate user", 500));
-  }
 };
 
 /**

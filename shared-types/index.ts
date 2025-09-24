@@ -14,6 +14,9 @@ export interface User {
   address?: string;
   joinDate?: Date;
   specializations: DoctorSpecialization[] | null;
+  qualifications?: string;
+  hospital?: string;
+  consultationFee?: string;
 }
 
 export interface Hospital {

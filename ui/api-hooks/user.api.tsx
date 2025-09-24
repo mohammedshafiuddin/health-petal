@@ -80,13 +80,14 @@ export function useCreateUser() {
 /**
  * Hook to fetch the responsibilities of the logged-in user
  */
-export function useUserResponsibilities() {
+export function useUserResponsibilities(userId: number | null) {
   return useQuery({
     queryKey: ['userResponsibilities'],
     queryFn: async (): Promise<UserResponsibilities> => {
       const response = await axios.get<UserResponsibilities>('/users/responsibilities');
       return response.data;
-    }
+    },
+    enabled: !!userId, // Only run this query if userId is available
   });
 }
 

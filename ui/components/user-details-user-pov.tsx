@@ -84,6 +84,8 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
           }
         });
       } else {
+        console.log({response});
+        
         markFailure(paymentId, {
           onSuccess: () => {
             router.push('/(drawer)/payment-failed');
@@ -92,6 +94,8 @@ const TokenBookingSection: React.FC<TokenBookingSectionProps> = ({
       }
 
     } catch (error) {
+      console.log({error: JSON.stringify(error)})
+      
       // On error, call markFailure
       if (paymentId) {
         markFailure(paymentId, {

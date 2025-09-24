@@ -66,9 +66,11 @@ function Login() {
     defaultValues: { login: "", password: "" },
   });
 
-  const isLoggingIn = false;
   // router is already defined above
-  const {loginFunc} = useAuth();
+  const {loginFunc, isLoggingIn, loginError} = useAuth();
+  React.useEffect(() => {
+    setError("login", { type: "manual", message: loginError || "" });
+  }, [loginError]);
 
   const onSubmit = async (data: LoginFormInputs) => {
     clearErrors();

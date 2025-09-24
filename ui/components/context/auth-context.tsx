@@ -43,12 +43,13 @@ interface AuthContextType {
   responsibilities: UserResponsibilities | null;
   responsibilitiesLoading: boolean;
   responsibilitiesError: Error | null;
-  refreshResponsibilities: () => void;
   roles: string[] | null;
   setRoles: (roles: string[] | null) => void;
   refreshRoles: () => Promise<void>;
   loginFunc: (payload: LoginFormInputs) => Promise<void>;
   userId: number | null;
+  isLoggingIn: boolean;
+  loginError?: string;
 }
 
 const defaultResponsibilities: UserResponsibilities = {
@@ -61,7 +62,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(
 );
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { mutate: loginApi, isPending: isLoggingIn } = useLogin();
+  const { mutate: loginApi, isPending: isLoggingIn, error: loginError } = useLogin();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [roles, setRoles] = useState<string[] | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
@@ -70,6 +71,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const r = await getRoles();
     setRoles(r);
   };
+
+  console.log({loginError})
+  
 
   useEffect(() => {
     refreshRoles();
@@ -82,9 +86,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const {
     data: responsibilities,
     isLoading: responsibilitiesLoading,
+    isFetching: responsibilitiesFetching,
     refetch: refetchResponsibilities,
     error: queryError,
-  } = useUserResponsibilities();
+  } = useUserResponsibilities(userId);
+
+  console.log({responsibilitiesFetching})
+  
 
   React.useEffect(() => {
     (async () => {
@@ -106,11 +114,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const pathname = usePathname();
 
-  const refreshResponsibilities = () => {
-    if (isLoggedIn) {
-      refetchResponsibilities();
-    }
-  };
 
   const logout = async ({
     isSessionExpired,
@@ -127,17 +130,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logoutApi({} as any, {
         onSuccess: () => {},
         onSettled: () => {
-          deleteJWT();
-          setIsLoggedIn(false);
-
+          
           if (!pageConditon) {
             router.replace({
               pathname: "/login" as any,
               params: isSessionExpired ? { message: SESSION_EXPIRED_MSG } : {},
             });
           }
+          deleteJWT();
         },
       });
+      setIsLoggedIn(false);
     } else {
       deleteJWT();
       setIsLoggedIn(false);
@@ -163,7 +166,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserId(result.user.id);
 
         await saveJWT(result.token);
-        console.log({result})
         
         // Update login state in auth context
         setIsLoggedIn(true);
@@ -173,8 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await saveRoles(result.user.roles);
           await refreshRoles();
         }
-
-        // refetchResponsibilities();
+        await refetchResponsibilities();
 
         // Clear the 'message' search param from the URL after login
         router.replace({
@@ -203,6 +204,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription.remove();
     };
   }, []);
+  
 
   return (
     <AuthContext.Provider
@@ -213,12 +215,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         responsibilities: responsibilities || defaultResponsibilities,
         responsibilitiesLoading,
         responsibilitiesError,
-        refreshResponsibilities,
         roles,
         setRoles,
         refreshRoles,
         loginFunc,
         userId,
+        isLoggingIn,
+        loginError: loginError?.message
       }}
     >
       {children}

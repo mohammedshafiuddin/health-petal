@@ -4,10 +4,10 @@ import { getJWT } from '@/hooks/useJWT';
 import { DeviceEventEmitter } from 'react-native'
 import { FORCE_LOGOUT_EVENT } from '../lib/const-strs';
 
-// const API_BASE_URL = 'http://192.168.1.7:4000'; // Change to your API base URL
-const API_BASE_URL = 'http://192.168.100.92:4000'; // Change to your API base URL
-// const API_BASE_URL = 'https://technocracy.ovh:4000'; // Change to your API base URL
-// const API_BASE_URL = 'http://10.59.191.237:4000/api/mobile/'; // Change to your API base URL
+// const API_BASE_URL = 'http://192.168.1.5:4000'; // Change to your API base URL
+// const API_BASE_URL = 'http://192.168.100.92:4000'; // Change to your API base URL
+const API_BASE_URL = 'https://www.technocracy.ovh'; // Change to your API base URL
+// const API_BASE_URL = 'http://10.195.26.42:4000'; // Change to your API base URL
 // const API_BASE_URL = 'http://localhost:4000/api/mobile/'; // Change to your API base URL
 // const API_BASE_URL = 'https://car-safar.com/api/mobile/'; // Change to your API base URL
 
@@ -44,10 +44,11 @@ axios.interceptors.response.use(
       // Handle unauthorized access
       DeviceEventEmitter.emit(FORCE_LOGOUT_EVENT);
     }
-    const message = error?.response?.data?.message;
-    if (message) {
+    const message = error?.response?.data?.error;
+    
+    if (msg) {
       // Optionally, you can attach the message to the error object or throw a new error
-      const err = new Error(message);
+      const err = new Error(msg);
       // Optionally attach the original error for debugging
       (err as any).original = error;
       return Promise.reject(err);
