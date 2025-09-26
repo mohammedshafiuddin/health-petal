@@ -1,0 +1,14 @@
+{
+  "name": "web-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker:build": "docker buildx build -t mohdshafiuddin54/pooler_web:latest . --progress=plain --platform linux/amd64",
+    "docker:push": "docker push mohdshafiuddin54/pooler_web:latest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

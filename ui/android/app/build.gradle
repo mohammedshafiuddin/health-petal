@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.victoriousshafi.ui'
+    namespace 'com.mohammedshafiudin54.health_petal'
     defaultConfig {
-        applicationId 'com.victoriousshafi.ui'
+        applicationId 'com.mohammedshafiudin54.health_petal'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

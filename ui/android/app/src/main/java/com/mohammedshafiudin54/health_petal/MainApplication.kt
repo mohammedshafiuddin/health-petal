@@ -1,4 +1,4 @@
-package com.victoriousshafi.ui
+package com.mohammedshafiudin54.health_petal
 
 import android.app.Application
 import android.content.res.Configuration

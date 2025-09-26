@@ -83,110 +83,112 @@ function ManageBusinessUsers() {
   const { data: businessUsers, isLoading, isError, refetch } = useGetBusinessUsers();
 
   return (
-    <ScrollView contentContainerStyle={tw`flex-grow p-5`} style={tw`bg-gray-50`}>
-      <View style={tw`flex-col gap-6`}>
-        <View style={tw`flex-row justify-between items-center mb-2 pb-4 border-b border-gray-200`}>
-          <View>
-            <View style={tw`flex-row items-center`}>
-              <MaterialIcons name="people" size={28} color="#3b82f6" style={tw`mr-2`} />
-              <MyText style={tw`text-2xl font-bold text-gray-800`}>Manage Business Users</MyText>
+    <AppContainer>
+      <View style={tw`flex-1 p-4 bg-gray-50`}>
+        <View style={tw`flex-col gap-6`}>
+          <View style={tw`flex-row justify-between items-center mb-2 pb-4 border-b border-gray-200`}>
+            <View>
+              <View style={tw`flex-row items-center`}>
+                <MaterialIcons name="people" size={28} color="#3b82f6" style={tw`mr-2`} />
+                <MyText style={tw`text-2xl font-bold text-gray-800`}>Manage Business Users</MyText>
+              </View>
+              <MyText style={tw`text-gray-600 mt-1`}>
+                {businessUsers?.length || 0} {businessUsers?.length === 1 ? 'user' : 'users'} found
+              </MyText>
             </View>
-            <MyText style={tw`text-gray-600 mt-1`}>
-              {businessUsers?.length || 0} {businessUsers?.length === 1 ? 'user' : 'users'} found
-            </MyText>
-          </View>
-          <MyButton
-            mode="contained"
-            textContent="Add User"
-            onPress={() => {
-              router.push("/(drawer)/admin-panel/manage-business-users/add-business-user" as any);
-            }}
-            style={tw`bg-blue-500`}
-          />
-        </View>
-
-        {isLoading ? (
-          <View style={tw`items-center py-12 bg-white rounded-xl shadow-sm`}>
-            <ActivityIndicator size="large" color="#3b82f6" />
-            <MyText style={tw`mt-4 text-gray-600 font-medium`}>Loading business users...</MyText>
-          </View>
-        ) : isError ? (
-          <View style={tw`p-8 bg-red-50 rounded-xl shadow-sm items-center`}>
-            <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
-              <MaterialIcons name="error" size={32} color="#ef4444" />
-            </View>
-            <MyText style={tw`text-red-700 font-bold text-lg mb-2 text-center`}>
-              Failed to load business users
-            </MyText>
-            <MyText style={tw`text-red-600 text-center mb-4`}>
-              There was an error loading the business users
-            </MyText>
-            <MyButton
-              mode="outlined"
-              textContent="Try Again"
-              onPress={() => refetch()}
-              style={tw`border-red-300 mt-2`}
-              textStyle={tw`text-red-600`}
-            />
-          </View>
-        ) : businessUsers && businessUsers.length > 0 ? (
-          <View>
-            {businessUsers.map((user) => (
-              <BusinessUserCard
-                key={user.id}
-                user={user}
-                onViewDetails={() => {
-                  // Navigate to user details page (to be implemented)
-                  Alert.alert("View Details", `Details for user: ${user.name}`);
-                }}
-                onEdit={() => {
-                  // Navigate to edit user page
-                  router.push(`/(drawer)/admin-panel/manage-business-users/edit-business-user/${user.id}`);
-                }}
-                onDeactivate={() => {
-                  Alert.alert(
-                    "Deactivate User",
-                    `Are you sure you want to deactivate ${user.name}?`,
-                    [
-                      {
-                        text: "Cancel",
-                        style: "cancel"
-                      },
-                      {
-                        text: "Deactivate",
-                        style: "destructive",
-                        onPress: () => {
-                          // Implement user deactivation logic
-                          Alert.alert("Success", `User ${user.name} has been deactivated`);
-                        }
-                      }
-                    ]
-                  );
-                }}
-              />
-            ))}
-          </View>
-        ) : (
-          <View style={tw`items-center py-12 bg-white rounded-xl shadow-sm`}>
-            <View style={tw`w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-4`}>
-              <MaterialIcons name="person-add" size={32} color="#94a3b8" />
-            </View>
-            <MyText style={tw`text-gray-600 text-lg mb-2 font-medium`}>No business users found</MyText>
-            <MyText style={tw`text-gray-500 text-center mb-6`}>
-              Get started by adding your first business user
-            </MyText>
             <MyButton
               mode="contained"
-              textContent="Add Your First Business User"
+              textContent="Add User"
               onPress={() => {
                 router.push("/(drawer)/admin-panel/manage-business-users/add-business-user" as any);
               }}
               style={tw`bg-blue-500`}
             />
           </View>
-        )}
+
+          {isLoading ? (
+            <View style={tw`items-center py-12 bg-white rounded-xl shadow-sm`}>
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <MyText style={tw`mt-4 text-gray-600 font-medium`}>Loading business users...</MyText>
+            </View>
+          ) : isError ? (
+            <View style={tw`p-8 bg-red-50 rounded-xl shadow-sm items-center`}>
+              <View style={tw`w-16 h-16 rounded-full bg-red-100 items-center justify-center mb-4`}>
+                <MaterialIcons name="error" size={32} color="#ef4444" />
+              </View>
+              <MyText style={tw`text-red-700 font-bold text-lg mb-2 text-center`}>
+                Failed to load business users
+              </MyText>
+              <MyText style={tw`text-red-600 text-center mb-4`}>
+                There was an error loading the business users
+              </MyText>
+              <MyButton
+                mode="outlined"
+                textContent="Try Again"
+                onPress={() => refetch()}
+                style={tw`border-red-300 mt-2`}
+                textStyle={tw`text-red-600`}
+              />
+            </View>
+          ) : businessUsers && businessUsers.length > 0 ? (
+            <View>
+              {businessUsers.map((user) => (
+                <BusinessUserCard
+                  key={user.id}
+                  user={user}
+                  onViewDetails={() => {
+                    // Navigate to user details page (to be implemented)
+                    Alert.alert("View Details", `Details for user: ${user.name}`);
+                  }}
+                  onEdit={() => {
+                    // Navigate to edit user page
+                    router.push(`/(drawer)/admin-panel/manage-business-users/edit-business-user/${user.id}`);
+                  }}
+                  onDeactivate={() => {
+                    Alert.alert(
+                      "Deactivate User",
+                      `Are you sure you want to deactivate ${user.name}?`,
+                      [
+                        {
+                          text: "Cancel",
+                          style: "cancel"
+                        },
+                        {
+                          text: "Deactivate",
+                          style: "destructive",
+                          onPress: () => {
+                            // Implement user deactivation logic
+                            Alert.alert("Success", `User ${user.name} has been deactivated`);
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={tw`items-center py-12 bg-white rounded-xl shadow-sm`}>
+              <View style={tw`w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-4`}>
+                <MaterialIcons name="person-add" size={32} color="#94a3b8" />
+              </View>
+              <MyText style={tw`text-gray-600 text-lg mb-2 font-medium`}>No business users found</MyText>
+              <MyText style={tw`text-gray-500 text-center mb-6`}>
+                Get started by adding your first business user
+              </MyText>
+              <MyButton
+                mode="contained"
+                textContent="Add Your First Business User"
+                onPress={() => {
+                  router.push("/(drawer)/admin-panel/manage-business-users/add-business-user" as any);
+                }}
+                style={tw`bg-blue-500`}
+              />
+            </View>
+          )}
+        </View>
       </View>
-    </ScrollView>
+    </AppContainer>
   );
 }
 

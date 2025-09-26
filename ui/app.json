@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mohammedshafiudin54.health-petal",
+      "bundleIdentifier": "com.mohammedshafiudin54.health_petal",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "ppemerchantsdkv1",
@@ -27,7 +27,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.mohammedshafiudin54.health-petal"
+      "package": "com.mohammedshafiudin54.health_petal"
     },
     "web": {
       "bundler": "metro",

@@ -7,9 +7,6 @@ import React, { useEffect } from "react";
 import {
   View,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from "react-native";
 import CustomDropdown from "@/components/dropdown";
 import MultiSelectDropdown from "@/components/multi-select";
@@ -60,6 +57,20 @@ const getBusinessUserSchema = (isEditing: boolean) => {
           .required("Daily token count is required")
           .integer("Token count must be a whole number")
           .min(0, "Token count must be a positive number"),
+      otherwise: (schema) => schema.optional(),
+    }),
+    yearsOfExperience: Yup.number().when("role", {
+      is: ROLE_NAMES.DOCTOR,
+      then: (schema) =>
+        schema
+          .nullable()
+          .integer("Years must be a whole number")
+          .min(0, "Years must be a positive number"),
+      otherwise: (schema) => schema.optional(),
+    }),
+    description: Yup.string().when("role", {
+      is: ROLE_NAMES.DOCTOR,
+      then: (schema) => schema.nullable().max(500, "Description must be less than 500 characters"),
       otherwise: (schema) => schema.optional(),
     }),
     hospitalId: Yup.number().optional(),
@@ -115,6 +126,8 @@ const getInitialValues = (userData?: any) => {
       : "",
     consultationFee: userData?.consultationFee || "",
     dailyTokenCount: userData?.dailyTokenCount || "",
+    yearsOfExperience: userData?.yearsOfExperience || "",
+    description: userData?.description || "",
     hospitalId: userData?.hospitalId || "",
   };
 };
@@ -122,16 +135,23 @@ const getInitialValues = (userData?: any) => {
 // Using the business role options from constants
 const roles = BUSINESS_ROLE_OPTIONS;
 
+interface FixedValues {
+  role?: typeof ROLE_NAMES.DOCTOR; // Only allowing doctor role as specified
+  hospitalId?: number;
+}
+
 interface AddBusinessUserFormProps {
   onSuccess?: () => void;
   userData?: any;
   isEditing?: boolean;
+  fixedValues?: FixedValues;
 }
 
 function AddBusinessUserForm({
   onSuccess,
   userData,
   isEditing = false,
+  fixedValues,
 }: AddBusinessUserFormProps) {
   const router = useRouter();
   const createBusinessUserMutation = useCreateBusinessUser();
@@ -156,7 +176,11 @@ function AddBusinessUserForm({
     multiple: false,
   });
 
-  const initialValues = getInitialValues(userData);
+  const initialValues = {
+    ...getInitialValues(userData),
+    ...(fixedValues?.role ? { role: fixedValues.role } : {}),
+    ...(fixedValues?.hospitalId ? { hospitalId: fixedValues.hospitalId.toString() } : {}),
+  };
   const validationSchema = getBusinessUserSchema(isEditing);
 
   const handleSubmit = async (
@@ -176,6 +200,8 @@ function AddBusinessUserForm({
                   .map((id: string) => parseInt(id)),
                 consultationFee: parseFloat(values.consultationFee),
                 dailyTokenCount: parseInt(values.dailyTokenCount),
+                yearsOfExperience: values.yearsOfExperience ? parseInt(values.yearsOfExperience) : null,
+                description: values.description,
                 hospitalId: values.hospitalId,
               }
             : {}),
@@ -228,6 +254,8 @@ function AddBusinessUserForm({
                   .map((id: string) => parseInt(id)),
                 consultationFee: parseFloat(values.consultationFee),
                 dailyTokenCount: parseInt(values.dailyTokenCount),
+                yearsOfExperience: values.yearsOfExperience ? parseInt(values.yearsOfExperience) : null,
+                description: values.description,
               }
             : {}),
         };
@@ -424,7 +452,7 @@ function AddBusinessUserForm({
                     }}
                     error={touched.role && !!errors.role}
                     style={tw`relative`}
-                    disabled={isEditing} // Role can't be changed when editing
+                    disabled={isEditing || !!fixedValues?.role} // Role can't be changed when editing or when fixed value is provided
                   />
                   {touched.role && errors.role && (
                     <MyText style={tw`text-red-500 text-xs mt-1`}>
@@ -508,6 +536,41 @@ function AddBusinessUserForm({
                         </MyText>
                       )}
                     </View>
+
+                    <View style={tw`mt-4`}>
+                      <MyTextInput
+                        topLabel="Years of Experience"
+                        placeholder="Enter years of experience"
+                        value={values.yearsOfExperience.toString()}
+                        onChangeText={handleChange("yearsOfExperience")}
+                        onBlur={handleBlur("yearsOfExperience")}
+                        style={tw`mb-2`}
+                        keyboardType="numeric"
+                      />
+                      {touched.yearsOfExperience && errors.yearsOfExperience && (
+                        <MyText style={tw`text-red-500 text-xs mt-1`}>
+                          {String(errors.yearsOfExperience)}
+                        </MyText>
+                      )}
+                    </View>
+
+                    <View style={tw`mt-4`}>
+                      <MyTextInput
+                        topLabel="Description"
+                        placeholder="Enter description"
+                        value={values.description}
+                        onChangeText={handleChange("description")}
+                        onBlur={handleBlur("description")}
+                        style={tw`mb-2`}
+                        multiline={true}
+                        numberOfLines={4}
+                      />
+                      {touched.description && errors.description && (
+                        <MyText style={tw`text-red-500 text-xs mt-1`}>
+                          {String(errors.description)}
+                        </MyText>
+                      )}
+                    </View>
                   </View>
                 )}
 
@@ -523,7 +586,7 @@ function AddBusinessUserForm({
                       }
                       error={touched.hospitalId && !!errors.hospitalId}
                       style={tw`relative`}
-                      disabled={isLoadingHospitals}
+                      disabled={isLoadingHospitals || !!fixedValues?.hospitalId}
                     />
                     {touched.hospitalId && errors.hospitalId && (
                       <MyText style={tw`text-red-500 text-xs mt-1`}>

@@ -19,6 +19,12 @@ export default function MyHospitalLayout() {
           title: "My Hospital",
         }}
       />
+      <Stack.Screen
+        name="add-doctor"
+        options={{
+          title: "Add Doctor",
+        }}
+      />
     </Stack>
   );
 }

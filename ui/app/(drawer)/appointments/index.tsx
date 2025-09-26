@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import tw from '@/app/tailwind';
 import MyText from '@/components/text';
-import { ThemedView } from '@/components/ThemedView';
 import { useRoles } from '@/components/context/roles-context';
 import { ROLE_NAMES } from '@/lib/constants';
 import { useAppointmentScreenDoctors } from '@/api-hooks/dashboard.api';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DoctorCard from '@/components/doctor-card';
+import AppContainer from '@/components/app-container';
 
 export default function AppointmentsScreen() {
   const roles = useRoles();
@@ -43,25 +43,25 @@ export default function AppointmentsScreen() {
   // If user doesn't have the gen_user role, show unauthorized message
   if (!isGenUser) {
     return (
-      <ThemedView style={tw`flex-1 justify-center items-center p-4`}>
-        <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md`}>
-          <MyText style={tw`text-red-500 text-lg mb-4 text-center`}>
-            Unauthorized Access
-          </MyText>
-          <MyText style={tw`text-center`}>
-            You don't have permission to view this page.
-          </MyText>
+      <AppContainer>
+        <View style={tw`flex-1 justify-center items-center p-4`}>
+          <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md`}>
+
+            <MyText style={tw`text-red-500 text-lg mb-4 text-center`}>
+              Unauthorized Access
+            </MyText>
+            <MyText style={tw`text-center`}>
+              You don't have permission to view this page.
+            </MyText>
+          </View>
         </View>
-      </ThemedView>
+      </AppContainer>
     );
   }
   
   return (
-    <ThemedView style={tw`flex-1`}>
-      <ScrollView 
-        contentContainerStyle={tw`p-4`}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppContainer>
+      <View style={tw`flex-1 p-4`}>
         {/* Header */}
         <View style={tw`mb-6`}>
           <MyText style={tw`text-2xl font-bold`}>Find Doctors</MyText>
@@ -88,7 +88,7 @@ export default function AppointmentsScreen() {
         </View>
         
         {/* Results */}
-        <View>
+        <View style={tw`flex-1`}>
           <View style={tw`flex-row justify-between items-center mb-4`}>
             <MyText style={tw`text-xl font-bold`}>Doctors</MyText>
             <MyText style={tw`text-gray-500`}>
@@ -128,7 +128,7 @@ export default function AppointmentsScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
-    </ThemedView>
+      </View>
+    </AppContainer>
   );
 }

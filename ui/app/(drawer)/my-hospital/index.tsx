@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import tw from '@/app/tailwind';
 import MyText from '@/components/text';
 import HorizontalImageScroller from '@/components/HorizontalImageScroller';
@@ -10,6 +11,7 @@ import { useAuth } from '@/components/context/auth-context';
 import { useGetHospitalById, useHospitalAdminDashboard } from '@/api-hooks/hospital.api';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import AppContainer from '@/components/app-container';
+import { ROLE_NAMES } from '@/lib/constants';
 
 export default function MyHospital() {
   const router = useRouter();
@@ -57,7 +59,15 @@ export default function MyHospital() {
   return (
     <AppContainer>
         <View style={tw`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-4`}>
-          <MyText style={tw`text-2xl font-bold mb-2`}>{hospital.name}</MyText>
+          <View style={tw`flex-row items-center justify-between`}>
+            <MyText style={tw`text-2xl font-bold flex-1`}>{hospital.name}</MyText>
+            <TouchableOpacity 
+              onPress={() => router.push("/(drawer)/my-hospital/edit-hospital" as any)}
+              style={tw`ml-2 p-1`}
+            >
+              <Ionicons name="create-outline" size={20} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
           <View style={tw`mt-4`}>
             <MyText style={tw`text-lg font-semibold mb-2`}>Address</MyText>
             <MyText style={tw`text-gray-700 dark:text-gray-300`}>{hospital.address}</MyText>
@@ -145,7 +155,7 @@ export default function MyHospital() {
                   <View style={tw`flex-row mt-1`}>
                     <View style={tw`bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded mr-2`}>
                       <MyText style={tw`text-blue-700 dark:text-blue-300 text-xs`}>
-                        Fee: ${doctor.consultationFee}
+                        Fee: ₹{doctor.consultationFee}
                       </MyText>
                     </View>
                     <View style={tw`${doctor.isAvailable ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'} px-2 py-1 rounded`}>
@@ -169,13 +179,25 @@ export default function MyHospital() {
           </View>
         )}
         
-        <View style={tw`mt-6 px-4`}>
-          <MyButton
-            // style={tw`bg-blue-500 mb-4`}
-            textContent="Edit Hospital Profile"
-            onPress={() => router.push("/(drawer)/my-hospital/edit-hospital" as any)}
-          />
-          
+        <View style={tw`mt-8 px-4`}>
+          <View style={tw`flex-row gap-3`}>
+            <MyButton
+              mode="contained"
+              textContent="Edit Hospital"
+              onPress={() => router.push("/(drawer)/my-hospital/edit-hospital" as any)}
+              style={tw`flex-1 rounded-lg py-4 bg-blue-500`}
+            />
+            
+            <MyButton
+              mode="contained"
+              textContent="Add Doctor"
+              onPress={() => {
+                // Redirect to add doctor form with fixed values
+                router.push("/(drawer)/my-hospital/add-doctor" as any);
+              }}
+              style={tw`flex-1 rounded-lg py-4 bg-green-500`}
+            />
+          </View>
         </View>
     </AppContainer>
   );

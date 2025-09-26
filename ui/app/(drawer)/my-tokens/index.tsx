@@ -62,27 +62,24 @@ export default function MyTokensScreen() {
   // If user doesn't have the gen_user role, show unauthorized message
   if (!isGenUser) {
     return (
-      <ThemedView style={tw`flex-1 justify-center items-center p-4`}>
-        <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md`}>
-          <MyText style={tw`text-red-500 text-lg mb-4 text-center`}>
-            Unauthorized Access
-          </MyText>
-          <MyText style={tw`text-center`}>
-            You don't have permission to view this page.
-          </MyText>
+      <AppContainer>
+        <View style={tw`flex-1 justify-center items-center p-4`}>
+          <View style={tw`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md`}>
+            <MyText style={tw`text-red-500 text-lg mb-4 text-center`}>
+              Unauthorized Access
+            </MyText>
+            <MyText style={tw`text-center`}>
+              You don't have permission to view this page.
+            </MyText>
+          </View>
         </View>
-      </ThemedView>
+      </AppContainer>
     );
   }
 
   return (
-    <ThemedView style={tw`flex-1`}>
-      <ScrollView 
-        contentContainerStyle={tw`p-4`}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
+    <AppContainer>
+      <View style={tw`flex-1 p-4`}>
         {/* Header */}
         <View style={tw`mb-6`}>
           <MyText style={tw`text-2xl font-bold`}>My Tokens</MyText>
@@ -175,8 +172,8 @@ export default function MyTokensScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
-    </ThemedView>
+      </View>
+    </AppContainer>
   );
 }
 
